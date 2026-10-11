@@ -1,0 +1,11 @@
+const base = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+export const Logo = () => (
+  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 18c4-1 5-9 9-9s5 8 9 7" fill="none" stroke="var(--cobalt)" strokeWidth="3" strokeLinecap="round" /><circle cx="21" cy="16" r="2.6" fill="var(--mango)" /></svg>
+);
+export const IconToday = () => <svg viewBox="0 0 24 24" width="24" height="24" {...base}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>;
+export const IconRecord = () => <svg viewBox="0 0 24 24" width="24" height="24" {...base}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4.5" fill="currentColor" /></svg>;
+export const IconProgress = () => <svg viewBox="0 0 24 24" width="24" height="24" {...base}><path d="M5 20V12M12 20V5M19 20v-9" /></svg>;
+export const IconFeed = () => <svg viewBox="0 0 24 24" width="24" height="24" {...base}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.8-3.4 3.4-5.5 6.5-5.5s5.7 2.1 6.5 5.5" /><circle cx="17" cy="9" r="2.5" /><path d="M16.5 14.6c2.4.2 4.3 2 5 5" /></svg>;
+export const IconGear = () => <svg viewBox="0 0 24 24" width="20" height="20" {...base}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>;
+export const IconWalk = () => <svg viewBox="0 0 24 24" width="26" height="26" {...base} stroke="var(--cobalt)"><circle cx="12" cy="4.5" r="2" /><path d="M12 8v6l-3 7M12 14l3 7M8 11l4-3 4 3" /></svg>;
+export const IconRun = () => <svg viewBox="0 0 24 24" width="26" height="26" {...base} stroke="var(--cobalt)"><circle cx="14" cy="4.5" r="2" /><path d="M6 21l3-5 3 2 2-6-3-2-3 3M14 12l3 3h4" /></svg>;

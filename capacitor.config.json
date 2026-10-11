@@ -1,0 +1,8 @@
+{
+  "appId": "app.lakad.tracker",
+  "appName": "Lakad",
+  "webDir": "dist",
+  "android": {
+    "useLegacyBridge": true
+  }
+}

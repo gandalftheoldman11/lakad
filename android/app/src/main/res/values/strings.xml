@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Lakad</string>
+    <string name="title_activity_main">Lakad</string>
+    <string name="package_name">app.lakad.tracker</string>
+    <string name="custom_url_scheme">app.lakad.tracker</string>
+    <!-- Background GPS notification (capacitor-community/background-geolocation) -->
+    <string name="capacitor_background_geolocation_notification_channel_name">Recording walks and runs</string>
+    <string name="capacitor_background_geolocation_notification_icon">drawable/ic_tracking</string>
+    <string name="capacitor_background_geolocation_notification_color">#1F4FE0</string>
+</resources>
