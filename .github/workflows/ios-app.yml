@@ -8,6 +8,10 @@ on:
 
 jobs:
   ios:
+    # 'shell: bash' turns on pipefail, so a failing xcodebuild/gradle can't be hidden behind '| tail'
+    defaults:
+      run:
+        shell: bash
     runs-on: macos-15
     env:
       # Optional. Without these the job only checks that the app compiles.

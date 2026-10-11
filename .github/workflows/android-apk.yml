@@ -8,6 +8,10 @@ on:
 
 jobs:
   apk:
+    # 'shell: bash' turns on pipefail, so a failing xcodebuild/gradle can't be hidden behind '| tail'
+    defaults:
+      run:
+        shell: bash
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
