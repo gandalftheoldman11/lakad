@@ -32,12 +32,16 @@ function stepPill(s: Session): [Tone, string] {
   const src = stepInfo(s).src;
   if (src === 'pedometer') return ['ok', 'Phone pedometer'];
   if (src === 'sensor') return ['ok', 'Step sensor on'];
-  if (s.motion === 'denied') return ['bad', 'Motion access off'];
+  if (isIOSApp && s.hw === 'denied') return ['bad', 'Motion & Fitness off'];
+  if (!isIOSApp && s.motion === 'denied') return ['bad', 'Motion access off'];
   if (s.indoor && s.motion === 'none') return ['bad', 'No step sensor'];
   return ['warn', s.motion === 'on' ? 'Counting steps…' : 'Steps estimated'];
 }
 function helpText(s: Session): string | null {
-  if (isIOSApp && (s.motion === 'denied' || s.hw === 'denied')) return 'Motion & Fitness access is off, so steps can only be estimated from GPS. Open iPhone Settings › Lakad and turn on Motion & Fitness.';
+  // iPhone app: steps come from the iPhone's step counter; the browser motion sensor doesn't matter here
+  if (isIOSApp) {
+    if (s.hw === 'denied') return 'Motion & Fitness is off, so steps can only be estimated from GPS. Open iPhone Settings › Privacy & Security › Motion & Fitness, turn on Fitness Tracking, then turn on Lakad in the list below it. Then close and reopen Lakad.';
+  } else
   if (s.motion === 'denied') return isIOS
     ? 'Motion access was declined, so steps can only be estimated from GPS. Close Lakad completely, open it again, start a recording and tap Allow when your iPhone asks about Motion & Orientation.'
     : 'Motion access is off, so steps can only be estimated from GPS. Allow motion sensors for this site or app in your phone settings.';
