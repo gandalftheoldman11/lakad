@@ -50,7 +50,7 @@ export function Empty({ children }: { children: ReactNode }) {
 }
 export function Pill({ tone, live, children }: { tone: 'ok' | 'warn' | 'bad' | 'muted'; live?: boolean; children: ReactNode }) {
   const c = { ok: 'bg-ok', warn: 'bg-mango', bad: 'bg-danger', muted: 'bg-muted' }[tone];
-  return <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-[13px] font-medium shadow-[var(--lift)]"><span className={`h-2 w-2 rounded-full ${c} ${live ? 'dot-live' : ''}`} />{children}</span>;
+  return <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-3 py-1.5 text-[13px] font-medium shadow-[var(--lift)]"><span className={`h-2 w-2 rounded-full ${c} ${live ? 'dot-live' : ''}`} />{children}</span>;
 }
 export function Toast() {
   const { toast, toastKey } = useStore(ui);

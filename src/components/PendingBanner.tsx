@@ -10,12 +10,12 @@ export function PendingBanner({ onResume }: { onResume?: () => void }) {
   const { settings } = useStore(data);
   if (!pending || session) return null;
   return (
-    <div className="mb-[18px] rounded-2xl bg-mango-soft px-4 py-3.5">
-      <p className="m-0 mb-2.5">You have an unfinished {pending.type} from {dateLabel(pending.startedAt)}: {fmtDist(pending.distance, settings.units)} {unitL(settings.units)} in {fmtTime(elapsed(pending))}.</p>
-      <div className="flex flex-wrap items-center gap-2.5">
-        <Button variant="primary" className="min-h-10 py-2" onClick={async () => { await resumePending(); onResume?.(); }}>Resume</Button>
-        <Button className="min-h-10 py-2" onClick={() => { adoptPendingForSave(); openDialog({ kind: 'finish' }); }}>Save it</Button>
-        <LinkButton danger onClick={discardPending}>Discard</LinkButton>
+    <div className="mb-4 shrink-0 rounded-[18px] bg-mango-soft px-3.5 py-3">
+      <p className="m-0 mb-2 text-[14px] leading-snug">Unfinished {pending.type} from {dateLabel(pending.startedAt)}: <strong className="tabular-nums">{fmtDist(pending.distance, settings.units)} {unitL(settings.units)}</strong> in {fmtTime(elapsed(pending))}.</p>
+      <div className="flex items-center gap-2">
+        <Button variant="primary" className="min-h-10 px-4 py-1.5 text-[14px]" onClick={async () => { await resumePending(); onResume?.(); }}>Resume</Button>
+        <Button className="min-h-10 px-4 py-1.5 text-[14px]" onClick={() => { adoptPendingForSave(); openDialog({ kind: 'finish' }); }}>Save it</Button>
+        <LinkButton danger className="ml-auto text-[14px]" onClick={discardPending}>Discard</LinkButton>
       </div>
     </div>
   );
