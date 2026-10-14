@@ -1,27 +1,31 @@
 import type { Activity } from '../types';
-import { dateLabel, fmtDist, fmtDur, fmtInt, typeWord, unitL } from '../lib/format';
+import { dateLabel, fmtDist, fmtDur, fmtInt, unitL } from '../lib/format';
 import { openDialog } from '../lib/dialogs';
 import { RouteShape } from './RouteShape';
 import { IconRun, IconWalk } from './icons';
 import { useStore } from '../lib/store';
 import { data } from '../lib/data';
+import { shareTitle } from '../lib/shareImage';
 
 export function ActivityList({ items }: { items: Activity[] }) {
   const { settings } = useStore(data);
   if (!items.length) return null;
   return (
-    <ul className="m-0 list-none border-t border-line p-0">
-      {items.map(a => (
-        <li key={a.id} className="border-b border-line">
-          <button className="grid w-full grid-cols-[56px_1fr_auto] items-center gap-3 px-0.5 py-3 text-left" onClick={() => openDialog({ kind: 'detail', id: a.id })}>
-            <span className="grid h-14 w-14 place-items-center overflow-hidden rounded-xl bg-cobalt-soft">
-              {a.route.length > 1 ? <RouteShape route={a.route} w={56} h={56} pad={8} stroke={2.5} /> : a.type === 'run' ? <IconRun /> : <IconWalk />}
+    <ul className="lift m-0 list-none overflow-hidden rounded-[22px] p-0">
+      {items.map((a, i) => (
+        <li key={a.id} className={i ? 'border-t border-line' : ''}>
+          <button className="grid w-full grid-cols-[60px_1fr_auto] items-center gap-3.5 px-3.5 py-3 text-left transition-colors active:bg-surface-2" onClick={() => openDialog({ kind: 'detail', id: a.id })}>
+            <span className="grid h-[60px] w-[60px] place-items-center overflow-hidden rounded-[16px] bg-cobalt-soft">
+              {a.route.length > 1 ? <RouteShape route={a.route} w={60} h={60} pad={10} stroke={2.6} /> : a.type === 'run' ? <IconRun /> : <IconWalk />}
             </span>
             <span className="min-w-0">
-              <strong className="block truncate font-bold">{typeWord(a.type)}{a.note ? ` · ${a.note}` : ''}</strong>
-              <span className="text-sm text-muted">{dateLabel(a.start)} · {fmtDur(a.duration)} · {fmtInt(a.steps)} steps</span>
+              <strong className="block truncate text-[15px] font-semibold">{shareTitle(a)}</strong>
+              <span className="block truncate text-[13px] text-muted">{dateLabel(a.start)} · {fmtDur(a.duration)} · {fmtInt(a.steps)} steps</span>
             </span>
-            <span className="text-right text-lg font-extrabold tabular-nums [font-stretch:115%]">{fmtDist(a.distance, settings.units)}<span className="text-sm font-normal text-muted"> {unitL(settings.units)}</span></span>
+            <span className="text-right">
+              <span className="num block text-[22px]">{fmtDist(a.distance, settings.units)}</span>
+              <span className="label">{unitL(settings.units)}{a.type === 'run' ? ' run' : ''}</span>
+            </span>
           </button>
         </li>
       ))}

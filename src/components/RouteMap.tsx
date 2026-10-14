@@ -34,7 +34,7 @@ export default function RouteMap({ route, follow, here, className = '' }: { rout
   const first = route[0], last = route[route.length - 1];
   const center = here ?? last;
   return (
-    <div className={`overflow-hidden rounded-[18px] border border-line ${className}`}>
+    <div className={`overflow-hidden rounded-[22px] ${className}`}>
       <MapContainer center={[center[0], center[1]]} zoom={16} className="h-full w-full" attributionControl zoomControl={!follow} scrollWheelZoom={false}>
         <TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19}
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />

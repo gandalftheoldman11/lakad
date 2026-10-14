@@ -2,7 +2,7 @@ import { Bar, BarChart, Cell, Line, LineChart, ReferenceLine, ResponsiveContaine
 import type { Activity, Units } from '../types';
 import { addDays, dateLabel, fmtInt, fmtP, sod, unitL, unitM, weekStart } from '../lib/format';
 
-const tipStyle = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, color: 'var(--ink)' };
+const tipStyle = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 14, color: 'var(--ink)', boxShadow: 'var(--lift)', fontSize: 13 };
 
 export function WeekSteps({ map, goal }: { map: Map<number, number>; goal: number }) {
   const today = sod(Date.now());
@@ -19,7 +19,7 @@ export function WeekSteps({ map, goal }: { map: Map<number, number>; goal: numbe
           <Tooltip cursor={{ fill: 'var(--cobalt-soft)' }} contentStyle={tipStyle}
             labelFormatter={(_, p) => (p?.[0] ? dateLabel((p[0].payload as { t: number }).t) : '')} formatter={v => [fmtInt(Number(v)), 'steps']} />
           <ReferenceLine y={goal} stroke="var(--mango)" strokeDasharray="4 4" strokeWidth={1.5} />
-          <Bar dataKey="steps" radius={[6, 6, 6, 6]} isAnimationActive={false}>
+          <Bar dataKey="steps" radius={[10, 10, 10, 10]} barSize={26} isAnimationActive={false}>
             {rows.map(r => <Cell key={r.t} fill={r.steps >= goal ? 'var(--mango)' : 'var(--bar-soft)'} />)}
           </Bar>
         </BarChart>
@@ -43,7 +43,7 @@ export function WeeklyDistance({ acts, units, weekGoal }: { acts: Activity[]; un
           <YAxis hide domain={[0, (max: number) => Math.max(max, weekGoal * 1.1, 1)]} />
           <Tooltip cursor={{ fill: 'var(--cobalt-soft)' }} contentStyle={tipStyle} labelFormatter={l => `Week of ${l}`} formatter={v => [`${v} ${unitL(units)}`, 'distance']} />
           {weekGoal > 0 && <ReferenceLine y={weekGoal} stroke="var(--cobalt)" strokeDasharray="4 4" strokeOpacity={0.6} />}
-          <Bar dataKey="d" radius={[6, 6, 6, 6]} isAnimationActive={false}>
+          <Bar dataKey="d" radius={[10, 10, 10, 10]} barSize={26} isAnimationActive={false}>
             {rows.map(r => <Cell key={r.s} fill={r.current ? 'var(--cobalt)' : 'var(--bar-soft)'} />)}
           </Bar>
         </BarChart>
