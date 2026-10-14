@@ -13,6 +13,9 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <item name="android:windowBackground">@color/lakad_window</item>
+        <item name="android:statusBarColor">@color/lakad_window</item>
+        <item name="android:windowLightStatusBar">@bool/lakad_light_bars</item>
     </style>
 
 

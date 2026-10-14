@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Background behind the status and navigation bars (matches the app's light background) -->
+    <color name="lakad_window">#EDF0F5</color>
+    <!-- Dark status bar icons on the light background -->
+    <bool name="lakad_light_bars">true</bool>
+</resources>
