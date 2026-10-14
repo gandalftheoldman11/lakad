@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { AnimatedNumber } from '../components/AnimatedNumber';
 import { useStore } from '../lib/store';
 import { data } from '../lib/data';
 import { stepsBetween, stepsByDay, sumWhere } from '../lib/metrics';
@@ -8,22 +9,21 @@ import { TopBar } from '../components/TopBar';
 import { PaceTrend, WeeklyDistance } from '../components/charts';
 import { Calendar } from '../components/Calendar';
 import { ActivityList } from '../components/ActivityList';
-import { Button, Empty, Panel } from '../components/ui';
+import { Button, Empty, Panel, SectionTitle, Segmented } from '../components/ui';
 import type { Activity } from '../types';
 
 type Period = 'week' | 'month' | 'all';
 
-function Seg<T extends string>({ value, set, opts, label }: { value: T; set: (v: T) => void; opts: [T, string][]; label: string }) {
-  return (
-    <div className="inline-flex rounded-full border border-line bg-surface p-1" role="group" aria-label={label}>
-      {opts.map(([k, l]) => <button key={k} aria-pressed={value === k} onClick={() => set(k)} className={`rounded-full px-4 py-2 font-semibold ${value === k ? 'bg-ink text-bg' : 'text-muted'}`}>{l}</button>)}
-    </div>
-  );
-}
-const Total = ({ v, l }: { v: string; l: string }) => <Panel className="min-w-0"><span className="num block text-[clamp(22px,6.6vw,40px)] [overflow-wrap:anywhere]">{v}</span><span className="text-sm text-muted">{l}</span></Panel>;
+const Stat = ({ v, l }: { v: React.ReactNode; l: string }) => <div className="min-w-0 py-3"><span className="num mid block truncate">{v}</span><span className="label">{l}</span></div>;
 function PB({ label, val, sub, a }: { label: string; val: string; sub: string; a?: Activity | null }) {
-  const inner = <><span className="text-sm text-muted">{label}</span><strong className="block text-[22px] font-extrabold tabular-nums [font-stretch:120%]">{val}</strong><span className="text-sm text-muted">{sub}</span></>;
-  return a ? <button className="rounded-2xl border border-line bg-surface p-4 text-left" onClick={() => openDialog({ kind: 'detail', id: a.id })}>{inner}</button> : <Panel>{inner}</Panel>;
+  const inner = (
+    <>
+      <span className="min-w-0"><span className="block text-[15px] font-semibold">{label}</span><span className="block truncate text-[13px] text-muted">{sub}</span></span>
+      <span className="num shrink-0 text-[20px]">{val}</span>
+    </>
+  );
+  const cls = 'flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left';
+  return a ? <button className={`${cls} active:bg-surface-2`} onClick={() => openDialog({ kind: 'detail', id: a.id })}>{inner}</button> : <div className={cls}>{inner}</div>;
 }
 
 export function Progress({ go }: { go: (t: 'record') => void }) {
@@ -45,30 +45,33 @@ export function Progress({ go }: { go: (t: 'record') => void }) {
   const listed = filter === 'all' ? acts : acts.filter(a => a.type === filter);
 
 
+  const periodLabel = period === 'week' ? 'this week' : period === 'month' ? 'this month' : 'in total';
   return (
     <>
-      <TopBar />
-      <h2 className="num big m-0">Progress</h2>
-      <div className="my-4"><Seg value={period} set={setPeriod} label="Period" opts={[['week', 'This week'], ['month', 'This month'], ['all', 'All time']]} /></div>
-      <div className="grid grid-cols-2 gap-3">
-        <Total v={fmtDist(t.dist, u)} l={unitL(u)} />
-        <Total v={fmtInt(steps)} l="steps" />
-        <Total v={fmtDur(t.dur)} l="moving time" />
-        <Total v={String(t.count)} l={t.count === 1 ? 'activity' : 'activities'} />
-        <Total v={settings.weight ? fmtInt(t.kcal) : '–'} l={settings.weight ? 'kcal' : 'kcal (add weight in settings)'} />
-        <Total v={fmtInt(t.elev)} l="m climbed" />
-      </div>
+      <TopBar title="Progress" />
+      <Segmented value={period} onChange={setPeriod} label="Period" options={[['week', 'This week'], ['month', 'This month'], ['all', 'All time']]} />
 
-      <section className="mt-7"><h2 className="m-0 mb-3 text-lg font-bold">Step goal calendar</h2><Panel><Calendar map={map} goal={settings.goal} /></Panel></section>
-      <section className="mt-7"><h2 className="m-0 mb-3 text-lg font-bold">Distance per week</h2><Panel><WeeklyDistance acts={acts} units={u} weekGoal={settings.weekGoal} /></Panel></section>
+      <section className="mt-6" aria-label="Totals">
+        <div className="flex items-baseline gap-2"><span className="num text-[clamp(60px,19vw,112px)]"><AnimatedNumber value={t.dist} format={n => fmtDist(n, u)} duration={800} /></span><span className="num text-[26px] text-muted">{unitL(u)}</span></div>
+        <p className="m-0 mt-2 text-[15px] text-muted">{t.count} {t.count === 1 ? 'activity' : 'activities'} {periodLabel} · {fmtDur(t.dur)} moving</p>
+        <div className="mt-4 grid grid-cols-3 gap-x-3 border-y border-line">
+          <Stat v={<AnimatedNumber value={steps} format={fmtInt} duration={800} />} l="steps" />
+          <Stat v={settings.weight ? <AnimatedNumber value={t.kcal} format={fmtInt} duration={800} /> : '–'} l="kcal" />
+          <Stat v={<AnimatedNumber value={t.elev} format={fmtInt} duration={800} />} l="m climbed" />
+        </div>
+        {!settings.weight && <p className="m-0 mt-2 text-[13px] text-muted">Add your weight in settings to see calories.</p>}
+      </section>
+
+      <section className="mt-8"><SectionTitle>Step goal calendar</SectionTitle><Panel><Calendar map={map} goal={settings.goal} /></Panel></section>
+      <section className="mt-8"><SectionTitle>Distance per week</SectionTitle><Panel><WeeklyDistance acts={acts} units={u} weekGoal={settings.weekGoal} /></Panel></section>
       {paceSet.filter(a => a.distance >= 500).length >= 2 && (
-        <section className="mt-7"><h2 className="m-0 mb-3 text-lg font-bold">{paceSet === runs ? 'Run' : 'Walk'} pace, recent</h2><Panel><PaceTrend acts={paceSet} units={u} /><p className="m-0 mt-1 text-xs text-muted">Higher on the chart is faster.</p></Panel></section>
+        <section className="mt-8"><SectionTitle aside={<span className="label">Higher is faster</span>}>{paceSet === runs ? 'Run' : 'Walk'} pace, recent</SectionTitle><Panel><PaceTrend acts={paceSet} units={u} /></Panel></section>
       )}
 
-      <section className="mt-7">
-        <h2 className="m-0 mb-3 text-lg font-bold">Personal bests</h2>
+      <section className="mt-8">
+        <SectionTitle>Personal bests</SectionTitle>
         {acts.length || bestDay ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="lift divide-y divide-line overflow-hidden rounded-[22px]">
             <PB label="Longest walk" val={lw ? `${fmtDist(lw.distance, u)} ${unitL(u)}` : '–'} sub={lw ? dateLabel(lw.start) : 'No walks yet'} a={lw} />
             <PB label="Longest run" val={lr ? `${fmtDist(lr.distance, u)} ${unitL(u)}` : '–'} sub={lr ? dateLabel(lr.start) : 'No runs yet'} a={lr} />
             <PB label="Fastest run pace" val={fastest ? `${fmtPace(fastest.duration, fastest.distance, u)} /${unitL(u)}` : '–'} sub={fastest ? dateLabel(fastest.start) : `Runs of 1 ${unitL(u)} or more`} a={fastest} />
@@ -80,9 +83,9 @@ export function Progress({ go }: { go: (t: 'record') => void }) {
       </section>
 
       {acts.length > 0 && (
-        <section className="mt-7">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="m-0 text-lg font-bold">All activities</h2>
-            <Seg value={filter} set={setFilter} label="Filter activities" opts={[['all', 'All'], ['walk', 'Walks'], ['run', 'Runs']]} /></div>
+        <section className="mt-8">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="m-0 text-[17px] font-bold">All activities</h2>
+            <Segmented value={filter} onChange={setFilter} label="Filter activities" options={[['all', 'All'], ['walk', 'Walks'], ['run', 'Runs']]} /></div>
           {listed.length ? <ActivityList items={listed} /> : <Empty><p className="m-0">No {filter === 'run' ? 'runs' : 'walks'} yet.</p></Empty>}
         </section>
       )}
