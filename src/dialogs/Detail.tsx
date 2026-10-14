@@ -4,7 +4,7 @@ import { data, deleteActivity } from '../lib/data';
 import { account } from '../lib/account';
 import { feed, postActivity, removePostFor } from '../lib/feed';
 import { calories } from '../lib/metrics';
-import { splitsOf } from '../lib/geo';
+import { splitsOf, trimRoute } from '../lib/geo';
 import { dateLabel, fmtDist, fmtInt, fmtP, fmtPace, fmtTime, timeLabel, unitL, unitM, ymd } from '../lib/format';
 import { closeDialog, openDialog } from '../lib/dialogs';
 import { shareTitle } from '../lib/shareImage';
@@ -70,7 +70,7 @@ export function Detail({ id }: { id: string }) {
       )}
       <Actions>
         <Button variant="primary" disabled={!!busy} onClick={() => openDialog({ kind: 'share', id: a.id })}><IconShare />Share image</Button>
-        {a.route.length > 1 && <Button disabled={!!busy} onClick={() => run('gpx', () => saveFile(`lakad-${a.type}-${ymd(a.start)}.gpx`, activityGpx(a), 'application/gpx+xml'))}>Export GPX</Button>}
+        {a.route.length > 1 && <Button disabled={!!busy} onClick={() => run('gpx', () => saveFile(`lakad-${a.type}-${ymd(a.start)}.gpx`, activityGpx({ ...a, route: trimRoute(a.route, settings.privacyTrim ?? 200) }), 'application/gpx+xml'))}>Export GPX</Button>}
       </Actions>
       {acc.enabled && (
         <div className="mt-2.5">

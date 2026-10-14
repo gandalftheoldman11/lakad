@@ -47,6 +47,7 @@ export function ShareSheet({ id }: { id: string }) {
       <div className="mt-4 grid place-items-center rounded-[20px] p-3" style={{ background: style === 'sticker' ? STYLES[2][2] : 'var(--surface-2)' }}>
         <canvas ref={ref} className={`block h-auto rounded-[14px] shadow-[var(--lift)] ${format === 'story' ? 'w-[52%]' : 'w-[78%]'}`} aria-label="Share image preview" />
       </div>
+      {(settings.privacyTrim ?? 200) > 0 && a.route.length > 1 && <p className="m-0 mt-2 text-center text-[13px] text-muted">The first and last {settings.privacyTrim ?? 200} m of the route are hidden. Change this in Settings › Privacy zone.</p>}
       <div className="mt-4 flex gap-2.5" role="group" aria-label="Style">
         {STYLES.map(([k, label, bg]) => (
           <button key={k} aria-pressed={style === k} onClick={() => setStyle(k)}

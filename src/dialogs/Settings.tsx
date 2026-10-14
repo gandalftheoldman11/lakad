@@ -21,13 +21,15 @@ export function SettingsDialog() {
   const { settings: s, all, acts, days } = useStore(data);
   const acc = useStore(account);
   const [goal, setGoal] = useState(String(s.goal));
-  const [week, setWeek] = useState(s.weekGoal ? String(s.weekGoal) : '');
+  const weekShown = s.weekGoal ? String(+s.weekGoal.toFixed(1)) : '';
+  const [week, setWeek] = useState(weekShown);
   const [units, setUnits] = useState<Units>(s.units);
   const [height, setHeight] = useState(s.height ? String(s.height) : '');
   const [weight, setWeight] = useState(s.weight ? String(s.weight) : '');
   const [autoPause, setAutoPause] = useState(s.autoPause);
   const [voice, setVoice] = useState(s.voice);
   const [lockScreen, setLockScreen] = useState(s.lockScreen !== false);
+  const [privacyTrim, setPrivacyTrim] = useState(String(s.privacyTrim ?? 200));
   const [walkCm, setWalkCm] = useState(s.strideWalkN < 0 ? String(Math.round(s.strideWalk * 100)) : '');
   const [runCm, setRunCm] = useState(s.strideRunN < 0 ? String(Math.round(s.strideRun * 100)) : '');
   const [resetCal, setResetCal] = useState(false);
@@ -56,9 +58,11 @@ export function SettingsDialog() {
     if (weight && !(w >= 25 && w <= 300)) return setErr('Weight should be between 25 and 300 kg.');
     // keep the weekly goal the same real distance when switching units
     let weekGoal = wk > 0 ? wk : 0;
-    if (weekGoal && units !== s.units && String(s.weekGoal) === week) weekGoal = +(units === 'mi' ? weekGoal / 1.609344 : weekGoal * 1.609344).toFixed(1);
+    // unchanged goal + unit switch: convert the exact stored value (no rounding drift when switching back and forth)
+    if (weekGoal && week === weekShown) weekGoal = s.weekGoal;
+    if (weekGoal && units !== s.units && week === weekShown) weekGoal = +(units === 'mi' ? weekGoal / 1.609344 : weekGoal * 1.609344).toFixed(6);
     closeDialog();
-    await saveSettings({ goal: g, units, weekGoal, height: h || 0, weight: w || 0, autoPause, voice, lockScreen, ...stride });
+    await saveSettings({ goal: g, units, weekGoal, height: h || 0, weight: w || 0, autoPause, voice, lockScreen, privacyTrim: Number(privacyTrim), ...stride });
     toast('Settings saved');
   }
   async function restore(f: File) {
@@ -106,6 +110,15 @@ export function SettingsDialog() {
         <Toggle label="Auto-pause when you stop moving" checked={autoPause} set={setAutoPause} />
         <Toggle label={`Spoken alert and vibration every ${unitWord(units, 1)}`} checked={voice} set={setVoice} />
         {isNative && <Toggle label={isIOSApp ? 'Live stats on the lock screen and Dynamic Island' : 'Live stats on the lock screen'} checked={lockScreen} set={setLockScreen} />}
+      </div>
+
+      <div className="mt-[22px] border-t border-line pt-[18px]">
+        <Sec title="Privacy zone" sub="Hides where your routes start and end, often your home, in share images, GPX exports and feed posts. Your own maps in Lakad always show the full route." />
+        <Field label="Hide the start and end of shared routes" id="sPriv">
+          <select id="sPriv" value={privacyTrim} onChange={e => setPrivacyTrim(e.target.value)}>
+            <option value="0">Off</option><option value="100">100 m</option><option value="200">200 m (recommended)</option><option value="500">500 m</option>
+          </select>
+        </Field>
       </div>
 
       <div className="mt-[22px] border-t border-line pt-[18px]">

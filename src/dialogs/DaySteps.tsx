@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { isIOSApp } from '../lib/platform';
 import { useStore } from '../lib/store';
 import { data, saveDay } from '../lib/data';
 import { parseYmd, sod, ymd } from '../lib/format';
@@ -14,7 +15,7 @@ export function DaySteps() {
   const [err, setErr] = useState('');
   return (
     <>
-      <SheetTitle sub="Copy the day's total from Google Fit, Samsung Health, Apple Health or your watch. Lakad uses whichever is higher: this number or the steps from your recorded activities.">Steps from your phone</SheetTitle>
+      <SheetTitle sub={isIOSApp ? 'Lakad reads your iPhone’s step counter automatically. Enter a number only if your watch counted more, for example on a walk without your phone.' : 'Copy the day’s total from Google Fit, Samsung Health, Apple Health or your watch. Lakad uses whichever is higher: this number or the steps from your recorded activities.'}>{isIOSApp ? 'Edit daily steps' : 'Steps from your phone'}</SheetTitle>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Day" id="dDate"><input id="dDate" type="date" value={date} max={ymd(today)} onChange={e => { setDate(e.target.value); const v = days[parseYmd(e.target.value)]?.steps; setSteps(v ? String(v) : ''); }} /></Field>
         <Field label="Total steps" id="dSteps"><input id="dSteps" type="number" inputMode="numeric" min="0" value={steps} onChange={e => setSteps(e.target.value)} /></Field>
