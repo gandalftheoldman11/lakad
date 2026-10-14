@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark mode: navy background, light status bar icons -->
+    <color name="lakad_window">#070E1C</color>
+    <bool name="lakad_light_bars">false</bool>
+</resources>
