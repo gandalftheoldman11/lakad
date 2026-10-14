@@ -10,7 +10,7 @@ import { WeekSteps } from '../components/charts';
 import { ActivityList } from '../components/ActivityList';
 import { PendingBanner } from '../components/PendingBanner';
 import { Button, Empty, GoalBar, GoalPath, LinkButton, Panel, SectionTitle } from '../components/ui';
-import { isInstalledPwa, isNative } from '../lib/platform';
+import { isInstalledPwa, isIOSApp, isNative } from '../lib/platform';
 
 export function Today({ go }: { go: (t: 'record') => void }) {
   const { acts, days, settings } = useStore(data);
@@ -38,7 +38,9 @@ export function Today({ go }: { go: (t: 'record') => void }) {
         </p>
         <div className="mt-5 -mx-1"><GoalPath value={steps} max={g} label="Daily step goal" /></div>
         <div className="mt-1 flex justify-end">
-          <LinkButton className="text-[14px]" onClick={() => openDialog({ kind: 'day' })}>{days[today]?.steps ? 'Update' : 'Add'} steps from your phone or watch</LinkButton>
+          {days[today]?.auto
+            ? <span className="text-[13px] text-muted">From your iPhone step counter · <LinkButton className="text-[13px]" onClick={() => openDialog({ kind: 'day' })}>Edit</LinkButton></span>
+            : <LinkButton className="text-[14px]" onClick={() => openDialog({ kind: 'day' })}>{days[today]?.steps ? 'Update' : 'Add'} steps {isIOSApp ? 'from your watch' : 'from your phone or watch'}</LinkButton>}
         </div>
       </section>
 
@@ -52,7 +54,7 @@ export function Today({ go }: { go: (t: 'record') => void }) {
         <div className="lift mt-6 rounded-[22px] px-4 py-3.5">
           <div className="mb-2.5 flex items-baseline justify-between">
             <span className="text-[15px] font-semibold">This week</span>
-            <span className="text-[14px] text-muted"><span className="font-semibold text-ink tabular-nums"><AnimatedNumber value={wDist} format={n => fmtDist(n, u)} /></span> of {settings.weekGoal} {unitL(u)}</span>
+            <span className="text-[14px] text-muted"><span className="font-semibold text-ink tabular-nums"><AnimatedNumber value={wDist} format={n => fmtDist(n, u)} /></span> of {+settings.weekGoal.toFixed(1)} {unitL(u)}</span>
           </div>
           <GoalBar value={wDist / unitM(u)} max={settings.weekGoal} color="var(--cobalt)" label="Weekly distance goal" height={8} />
         </div>

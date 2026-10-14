@@ -10,12 +10,12 @@ import { openLocationSettings } from '../lib/tracker';
 import { isAndroidApp, isIOS, isIOSApp, isNative } from '../lib/platform';
 import { TopBar } from '../components/TopBar';
 import { PendingBanner } from '../components/PendingBanner';
-import { Button, LinkButton, Pill, Segmented } from '../components/ui';
+import { LinkButton, Pill, Segmented } from '../components/ui';
 import { IconPause, IconPlay, IconRun, IconStop, IconWalk } from '../components/icons';
 import type { ActivityType } from '../types';
 
 const RouteMap = lazy(() => import('../components/RouteMap'));
-const Stat = ({ v, l }: { v: React.ReactNode; l: string }) => <div className="min-w-0 px-3 py-3"><span className="num mid block truncate">{v}</span><span className="label">{l}</span></div>;
+const Stat = ({ v, l }: { v: React.ReactNode; l: string }) => <div className="min-w-0 px-3 py-[clamp(6px,1.4dvh,12px)]"><span className="num block truncate text-[clamp(17px,2.8dvh,22px)]">{v}</span><span className="label block truncate">{l}</span></div>;
 type Tone = 'ok' | 'warn' | 'bad';
 
 function geoPill(s: Session): [Tone, string] | null {
@@ -67,44 +67,47 @@ export function Record() {
   const u = settings.units;
 
   if (!s) return (
-    <>
-      <TopBar title="Record" />
+    <div className="fit-screen">
+      <TopBar title="Record" compact action={<LinkButton className="text-[14px]" onClick={() => openDialog({ kind: 'form' })}>Add past activity</LinkButton>} />
       <PendingBanner />
       <div className="flex justify-center">
         <Segmented value={type} onChange={setType} label="Activity type"
           options={[['walk', <><IconWalk size={18} color="currentColor" />Walk</>], ['run', <><IconRun size={18} color="currentColor" />Run</>]]} />
       </div>
 
-      <div className="relative mx-auto mt-8 grid aspect-square w-[min(72vw,280px)] place-items-center">
-        {/* concentric route rings around the start button */}
-        <span aria-hidden="true" className="absolute inset-0 rounded-full border border-dashed border-line" />
-        <span aria-hidden="true" className="absolute inset-[12%] rounded-full border border-line" />
-        <button disabled={!!pending || starting} onClick={async () => { setStarting(true); try { await start(type, indoor); } finally { setStarting(false); } }}
-          className="relative grid h-[62%] w-[62%] place-items-center rounded-full bg-cobalt text-on-cobalt shadow-[0_24px_50px_-18px_var(--cobalt),inset_0_2px_0_rgba(255,255,255,.18)] transition-transform active:scale-95 disabled:opacity-50">
-          <span className="flex flex-col items-center gap-1">
-            <IconPlay size={30} />
-            <span className="text-[20px] font-extrabold tracking-[-0.01em] [font-stretch:115%]">{starting ? 'Starting…' : 'Start'}</span>
-          </span>
-          <span aria-hidden="true" className="absolute right-[6%] bottom-[14%] h-4 w-4 rounded-full bg-mango ring-4 ring-bg" />
-        </button>
+      {/* The start button grows or shrinks to the space this phone has */}
+      <div className="size-box my-[clamp(8px,2dvh,24px)] grid min-h-[120px] flex-1 place-items-center">
+        <div className="relative grid aspect-square w-[min(100cqh,78cqw,300px)] place-items-center">
+          <span aria-hidden="true" className="absolute inset-0 rounded-full border border-dashed border-line" />
+          <span aria-hidden="true" className="absolute inset-[12%] rounded-full border border-line" />
+          <button disabled={!!pending || starting} onClick={async () => { setStarting(true); try { await start(type, indoor); } finally { setStarting(false); } }}
+            className="relative grid h-[62%] w-[62%] place-items-center rounded-full bg-cobalt text-on-cobalt shadow-[0_24px_50px_-18px_var(--cobalt),inset_0_2px_0_rgba(255,255,255,.18)] transition-transform active:scale-95 disabled:opacity-50">
+            <span className="flex flex-col items-center gap-1">
+              <IconPlay size={30} />
+              <span className="text-[clamp(16px,2.6dvh,20px)] font-extrabold tracking-[-0.01em] [font-stretch:115%]">{starting ? 'Starting…' : 'Start'}</span>
+            </span>
+            <span aria-hidden="true" className="absolute right-[4%] bottom-[12%] aspect-square w-[13%] rounded-full bg-mango ring-[3px] ring-bg" />
+          </button>
+        </div>
       </div>
-      <p className="mt-5 mb-0 text-center text-[15px] text-muted">
+
+      <p className="m-0 text-center text-[14px] text-muted">
         {pending ? 'Resume, save or discard your unfinished activity first.'
           : `${indoor ? (type === 'run' ? 'Indoor run' : 'Indoor walk') : (type === 'run' ? 'Run' : 'Walk')}. ${isNative ? 'Recording continues with the screen off.' : 'Keep this screen open while you move.'}`}
       </p>
 
-      <label className="lift mt-7 flex items-center justify-between gap-4 rounded-[22px] px-4 py-3.5">
-        <span><span className="block text-[15px] font-semibold">Indoors or treadmill</span><span className="block text-[13px] text-muted">No GPS. Distance from your steps × {strideM(type, settings).toFixed(2)} m step length.</span></span>
+      {!pending && <>
+      <label className="lift mt-[clamp(10px,2dvh,20px)] flex shrink-0 items-center justify-between gap-4 rounded-[20px] px-4 py-3">
+        <span className="min-w-0"><span className="block text-[15px] font-semibold">Indoors or treadmill</span><span className="block truncate text-[13px] text-muted">No GPS. Distance from steps × {strideM(type, settings).toFixed(2)} m.</span></span>
         <input type="checkbox" role="switch" checked={indoor} onChange={e => setIndoor(e.target.checked)} />
       </label>
-
-      <div className="mt-6 space-y-2 text-[13px] text-muted">
-        {!pending && <p className="m-0">Auto-pause is {settings.autoPause ? 'on' : 'off'} and {unitWord(u, 1)} alerts are {settings.voice ? 'on' : 'off'}. Change these in settings.</p>}
-        {isAndroidApp && <p className="m-0">If recording stops with the screen off, open Android Settings, find Lakad, and set battery usage to Unrestricted.</p>}
-        {!isNative && <p className="m-0">{isIOS ? 'On iPhone, websites can’t track with the screen locked. If it locks, Lakad fills the gap with a straight line when you return. For true screen-off tracking, use the Lakad iPhone app.' : 'Browsers can’t track with the screen locked. If it locks, Lakad fills the gap with a straight line when you return. For true screen-off tracking, use the Lakad Android app.'}</p>}
-      </div>
-      <Button className="mt-6 w-full" onClick={() => openDialog({ kind: 'form' })}>Add a past activity instead</Button>
-    </>
+      <p className="m-0 mt-2.5 shrink-0 text-center text-[12px] text-muted">
+        {isAndroidApp ? 'Tip: set Lakad’s battery use to Unrestricted for screen-off tracking.'
+          : !isNative ? (isIOS ? 'Screen-off tracking needs the Lakad iPhone app.' : 'Screen-off tracking needs the Lakad Android app.')
+          : `Auto-pause ${settings.autoPause ? 'on' : 'off'}, ${unitWord(u, 1)} alerts ${settings.voice ? 'on' : 'off'}.`}
+      </p>
+      </>}
+    </div>
   );
 
   const sec = elapsed(s), si = stepInfo(s);
@@ -112,26 +115,26 @@ export function Record() {
   const gp = geoPill(s), sp = stepPill(s), help = helpText(s);
 
   return (
-    <>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+    <div className="fit-screen">
+      <div className="no-scrollbar -mx-5 flex shrink-0 gap-2 overflow-x-auto px-5 pb-1">
         <Pill tone={s.paused ? 'warn' : 'bad'} live={!s.paused}>{s.paused ? (s.auto ? 'Auto-paused' : 'Paused') : `Recording ${s.indoor ? 'indoor ' : ''}${s.type}`}</Pill>
         {gp && <Pill tone={gp[0]}>{gp[1]}</Pill>}
         <Pill tone={sp[0]}>{sp[1]}</Pill>
       </div>
-      {help && <p className="mt-0 mb-4 rounded-[18px] bg-mango-soft px-4 py-3 text-[14px]">{help}</p>}
+      {help && <p className="m-0 mt-2 shrink-0 rounded-[16px] bg-mango-soft px-3.5 py-2.5 text-[13px] leading-snug">{help}</p>}
       {s.geo === 'blocked' && (
-        <p className="mt-0 mb-4 text-sm text-danger">Location permission is off, so distance and route can't be recorded. {isNative && <LinkButton onClick={() => void openLocationSettings()}>Open settings</LinkButton>}</p>
+        <p className="m-0 mt-2 shrink-0 text-[13px] text-danger">Location permission is off, so distance and route can't be recorded. {isNative && <LinkButton onClick={() => void openLocationSettings()}>Open settings</LinkButton>}</p>
       )}
 
-      <div className="flex items-baseline gap-2">
-        <span className="num text-[clamp(72px,24vw,128px)]" aria-live="off"><AnimatedNumber id="live-distance" value={s.distance} format={n => fmtDist(n, u)} duration={800} /></span>
-        <span className="num text-[28px] text-muted">{unitL(u)}</span>
+      <div className="mt-[clamp(6px,1.5dvh,16px)] flex shrink-0 items-baseline gap-2">
+        <span className="num text-[clamp(52px,min(24vw,11dvh),128px)]" aria-live="off"><AnimatedNumber id="live-distance" value={s.distance} format={n => fmtDist(n, u)} duration={800} /></span>
+        <span className="num text-[clamp(20px,3.2dvh,28px)] text-muted">{unitL(u)}</span>
       </div>
-      <p className="m-0 mt-1 text-[14px] text-muted">{s.indoor ? 'Distance from your steps' : `${s.type === 'run' ? 'Run' : 'Walk'} started at ${new Date(s.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`}</p>
+      <p className="m-0 mt-1 shrink-0 text-[13px] text-muted">{s.indoor ? 'Distance from your steps' : `${s.type === 'run' ? 'Run' : 'Walk'} started at ${new Date(s.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`}</p>
 
-      <div className="lift mt-5 overflow-hidden rounded-[22px]">
+      <div className="lift mt-[clamp(8px,1.8dvh,18px)] shrink-0 overflow-hidden rounded-[20px]">
         <div className="hairline-x grid grid-cols-3">
-          <Stat v={fmtTime(sec)} l="moving time" />
+          <Stat v={fmtTime(sec)} l="time" />
           <Stat v={s.indoor ? fmtPace(sec, s.distance, u) : fmtP(currentPace(s))} l={s.indoor ? `avg /${unitL(u)}` : `now /${unitL(u)}`} />
           <Stat v={s.indoor ? (si.steps && sec ? String(Math.round(si.steps / (sec / 60))) : '–') : fmtPace(sec, s.distance, u)} l={s.indoor ? 'steps/min' : `avg /${unitL(u)}`} />
         </div>
@@ -142,29 +145,33 @@ export function Record() {
         </div>
       </div>
 
-      {s.indoor ? null : s.points.length > 0 || (s.here && s.geo !== 'coarse') ? (
-        <Suspense fallback={<div className="mt-4 aspect-[4/3] rounded-[22px] bg-cobalt-soft" />}>
-          <RouteMap route={s.points} here={s.here} follow className="mt-4 aspect-[4/3] rounded-[22px]" />
-        </Suspense>
-      ) : (
-        <div className="lift mt-4 grid aspect-[4/3] place-items-center rounded-[22px] p-6 text-center text-[14px] text-muted">
-          {s.geo === 'blocked' ? 'No route without location. Time and steps still record.'
-            : s.geo === 'coarse' ? 'Waiting for a precise location. See the note above.'
-            : 'Finding your location… This can take up to a minute the first time.'}
-        </div>
-      )}
+      {/* The map takes whatever height is left on this phone */}
+      <div className="mt-[clamp(8px,1.8dvh,16px)] min-h-0 flex-1">
+        {s.indoor ? (
+          <div className="grid h-full place-items-center rounded-[20px] border border-dashed border-line px-6 text-center text-[13px] text-muted">Indoor mode: no map. Distance comes from your steps.</div>
+        ) : s.points.length > 0 || (s.here && s.geo !== 'coarse') ? (
+          <Suspense fallback={<div className="h-full rounded-[20px] bg-cobalt-soft" />}>
+            <RouteMap route={s.points} here={s.here} follow className="h-full rounded-[20px]" />
+          </Suspense>
+        ) : (
+          <div className="lift grid h-full place-items-center rounded-[20px] p-5 text-center text-[13px] text-muted">
+            {s.geo === 'blocked' ? 'No route without location. Time and steps still record.'
+              : s.geo === 'coarse' ? 'Waiting for a precise location. See the note above.'
+              : 'Finding your location… This can take up to a minute the first time.'}
+          </div>
+        )}
+      </div>
 
-      <div className="mt-6 flex items-center justify-center gap-5">
+      <div className="mt-[clamp(10px,2dvh,20px)] flex shrink-0 items-center justify-center gap-5">
         <button onClick={() => (s.paused ? void resume() : pause())} aria-label={s.paused ? 'Resume' : 'Pause'}
-          className={`grid h-[76px] w-[76px] place-items-center rounded-full transition-transform active:scale-95 ${s.paused ? 'bg-cobalt text-on-cobalt shadow-[0_16px_34px_-14px_var(--cobalt)]' : 'lift text-ink'}`}>
-          {s.paused ? <IconPlay size={30} /> : <IconPause size={28} />}
+          className={`grid h-[clamp(58px,8.5dvh,76px)] w-[clamp(58px,8.5dvh,76px)] place-items-center rounded-full transition-transform active:scale-95 ${s.paused ? 'bg-cobalt text-on-cobalt shadow-[0_16px_34px_-14px_var(--cobalt)]' : 'lift text-ink'}`}>
+          {s.paused ? <IconPlay size={28} /> : <IconPause size={26} />}
         </button>
         <button onClick={() => { pause(); openDialog({ kind: 'finish' }); }}
-          className="flex h-[76px] items-center gap-2.5 rounded-full bg-mango px-8 text-[18px] font-extrabold text-[#2A1B00] shadow-[0_16px_34px_-16px_var(--mango),inset_0_1px_0_rgba(255,255,255,.35)] transition-transform active:scale-95">
+          className="flex h-[clamp(58px,8.5dvh,76px)] items-center gap-2.5 rounded-full bg-mango px-8 text-[18px] font-extrabold text-[#2A1B00] shadow-[0_16px_34px_-16px_var(--mango),inset_0_1px_0_rgba(255,255,255,.35)] transition-transform active:scale-95">
           <IconStop size={18} />Finish
         </button>
       </div>
-      {!isNative && <p className="mt-5 text-center text-[13px] text-muted">Keep this screen on for the most accurate route.</p>}
-    </>
+    </div>
   );
 }
