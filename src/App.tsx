@@ -11,16 +11,26 @@ import { Record } from './screens/Record';
 import { Progress } from './screens/Progress';
 import { Feed } from './screens/Feed';
 import { Detail } from './dialogs/Detail';
+import { ShareSheet } from './dialogs/ShareSheet';
 import { ActivityForm } from './dialogs/ActivityForm';
 import { DaySteps } from './dialogs/DaySteps';
 import { Finish } from './dialogs/Finish';
 import { SettingsDialog } from './dialogs/Settings';
 import { AccountDialog } from './dialogs/Account';
 import { Sheet, Toast } from './components/ui';
-import { IconFeed, IconProgress, IconRecord, IconToday } from './components/icons';
+import { IconFeed, IconGear, IconProgress, IconRecord, IconToday } from './components/icons';
+import { openDialog } from './lib/dialogs';
 
 type Tab = 'today' | 'record' | 'progress' | 'feed';
-const TABS: [Tab, string, () => React.ReactElement][] = [['today', 'Today', IconToday], ['record', 'Record', IconRecord], ['progress', 'Progress', IconProgress], ['feed', 'Feed', IconFeed]];
+
+function NavItem({ label, active, onClick, children }: { label: string; active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} aria-current={active ? 'page' : undefined}
+      className={`flex flex-col items-center gap-0.5 px-1 pt-2.5 pb-2.5 text-[11px] font-semibold transition-colors ${active ? 'text-cobalt' : 'text-muted'}`}>
+      {children}{label}
+    </button>
+  );
+}
 
 export default function App() {
   const [tab, setTab] = useState<Tab>(() => (rec.get().session ? 'record' : 'today'));
@@ -53,7 +63,7 @@ export default function App() {
 
   return (
     <>
-      <main className="mx-auto max-w-[560px] px-[18px] pt-5 pb-32">
+      <main className="mx-auto max-w-[560px] px-5 pt-5 pb-36">
         {updateReady && !recording && (
           <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-cobalt-soft px-4 py-3">
             <span>A new version of Lakad is ready.</span>
@@ -66,20 +76,26 @@ export default function App() {
         {tab === 'feed' && <Feed go={go} />}
       </main>
 
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-        <div className="mx-auto grid max-w-[560px] grid-cols-4">
-          {TABS.map(([t, label, Icon]) => (
-            <button key={t} onClick={() => go(t)} aria-current={tab === t ? 'page' : undefined}
-              className={`relative flex flex-col items-center gap-0.5 px-1 pt-2.5 pb-3 text-xs font-semibold ${tab === t ? 'text-cobalt' : 'text-muted'}`}>
-              <Icon />{label}
-              {t === 'record' && recording && <span className="dot-live absolute top-2 right-[calc(50%-18px)] h-[9px] w-[9px] rounded-full bg-danger" aria-label="Recording" />}
-            </button>
+      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-20 px-3" style={{ paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))' }}>
+        <div className="mx-auto grid max-w-[520px] grid-cols-5 items-end rounded-[28px] border border-line bg-[var(--nav)] px-1 shadow-[var(--lift)] backdrop-blur-xl">
+          {([['today', 'Today', IconToday], ['progress', 'Progress', IconProgress]] as const).map(([t, label, Icon]) => (
+            <NavItem key={t} label={label} active={tab === t} onClick={() => go(t)}><Icon /></NavItem>
           ))}
+          <div className="flex justify-center">
+            <button onClick={() => go('record')} aria-label={recording ? 'Recording in progress' : 'Record'} aria-current={tab === 'record' ? 'page' : undefined}
+              className={`relative -mt-6 mb-2 grid h-[60px] w-[60px] place-items-center rounded-full text-on-cobalt shadow-[0_12px_28px_-10px_var(--cobalt),inset_0_1px_0_rgba(255,255,255,.2)] ring-4 ring-bg transition-transform active:scale-95 ${recording ? 'bg-danger' : 'bg-cobalt'}`}>
+              <IconRecord size={28} />
+              {recording && <span className="dot-live absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-mango ring-2 ring-bg" />}
+            </button>
+          </div>
+          <NavItem label="Feed" active={tab === 'feed'} onClick={() => go('feed')}><IconFeed /></NavItem>
+          <NavItem label="Settings" active={false} onClick={() => openDialog({ kind: 'settings' })}><IconGear /></NavItem>
         </div>
       </nav>
 
       <Sheet open={!!d.kind} onClose={closeDialog} label={d.kind || 'dialog'}>
         {d.kind === 'detail' && <Detail id={d.id} />}
+        {d.kind === 'share' && <ShareSheet id={d.id} />}
         {d.kind === 'form' && <ActivityForm id={d.id} />}
         {d.kind === 'day' && <DaySteps />}
         {d.kind === 'finish' && <Finish onSaved={() => go('today')} />}

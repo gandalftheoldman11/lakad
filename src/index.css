@@ -3,16 +3,20 @@
 @import "leaflet/dist/leaflet.css";
 
 :root {
-  --bg: #F1F4F8; --surface: #FFFFFF; --ink: #13203A; --muted: #5A6679; --line: #DAE1EA;
-  --cobalt: #1F4FE0; --cobalt-soft: #DCE5FF; --mango: #FFB627; --mango-soft: #FFF0CC;
-  --bar-soft: #C9D3E0; --danger: #B8322A; --ok: #1E9E5A; --on-cobalt: #FFFFFF;
+  --bg: #EDF0F5; --surface: #FFFFFF; --surface-2: #F4F6FA; --ink: #0E1B33; --muted: #5B6780; --line: #DDE3EC;
+  --cobalt: #1F4FE0; --cobalt-soft: #DFE7FF; --mango: #FFB627; --mango-soft: #FFF1CF;
+  --bar-soft: #CDD5E2; --danger: #C0352B; --ok: #1E9E5A; --on-cobalt: #FFFFFF;
+  --nav: rgba(255,255,255,0.82);
+  --lift: 0 1px 0 rgba(14,27,51,0.04), 0 18px 40px -24px rgba(14,27,51,0.28);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0D1420; --surface: #162032; --ink: #E9EFF8; --muted: #93A1B6; --line: #25324A;
-    --cobalt: #7395FF; --cobalt-soft: #1F2D52; --mango: #FFC24D; --mango-soft: #3A2E12;
-    --bar-soft: #2F3D57; --danger: #FF7A6E; --ok: #4CC789; --on-cobalt: #0D1420;
+    --bg: #070E1C; --surface: #0F182B; --surface-2: #152036; --ink: #EEF2F9; --muted: #8D9AB2; --line: #1C2840;
+    --cobalt: #6E8FFF; --cobalt-soft: #18264A; --mango: #FFC24D; --mango-soft: #33280F;
+    --bar-soft: #253250; --danger: #FF7A6E; --ok: #4CC789; --on-cobalt: #070E1C;
+    --nav: rgba(15,24,43,0.82);
+    --lift: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 40px -24px rgba(0,0,0,0.6);
     color-scheme: dark;
   }
 }
@@ -20,6 +24,7 @@
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
@@ -45,23 +50,48 @@ button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .5; }
 
 /* The type treatment: expanded, heavy, tabular numerals */
-.num { font-stretch: 125%; font-weight: 850; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; line-height: .95; }
-.huge { font-size: clamp(72px, 24vw, 132px); }
-.big { font-size: clamp(34px, 10vw, 48px); }
-.mid { font-size: 24px; font-weight: 800; }
+.num { font-stretch: 125%; font-weight: 850; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: .92; }
+.huge { font-size: clamp(76px, 25vw, 136px); }
+.big { font-size: clamp(34px, 10vw, 46px); }
+.mid { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.label { font-size: 13px; color: var(--muted); font-weight: 500; }
+.lift { background: var(--surface); box-shadow: var(--lift); }
+.hairline-x > * + * { border-left: 1px solid var(--line); }
 
 .field input, .field select, .field textarea {
-  border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 12px; width: 100%; color: var(--ink);
+  border: 1px solid var(--line); background: var(--surface-2); border-radius: 14px; padding: 13px 14px; width: 100%; color: var(--ink); font-size: 16px;
 }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--cobalt); box-shadow: 0 0 0 3px var(--cobalt-soft); }
+/* Bottom sheet on phones, centered panel on wide screens */
 dialog.sheet {
-  border: 0; padding: 0; background: var(--surface); color: var(--ink); border-radius: 22px;
-  width: min(520px, calc(100% - 24px)); max-height: calc(100% - 40px); overflow: auto;
+  border: 0; padding: 0 0 env(safe-area-inset-bottom, 0px); background: var(--surface); color: var(--ink);
+  width: 100%; max-width: 560px; max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px)); overflow: auto;
+  margin: auto auto 0; border-radius: 28px 28px 0 0; overscroll-behavior: contain;
 }
-dialog.sheet::backdrop { background: rgba(8, 14, 26, .55); }
+dialog.sheet[open] { animation: sheet-in .28s cubic-bezier(.2,.8,.2,1); }
+dialog.sheet::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 10px auto 0; }
+@media (min-width: 640px) {
+  dialog.sheet { margin: auto; border-radius: 28px; width: min(520px, calc(100% - 48px)); padding-bottom: 0; }
+  dialog.sheet::before { display: none; }
+}
+dialog.sheet::backdrop { background: rgba(5, 10, 23, .6); backdrop-filter: blur(2px); }
+@keyframes sheet-in { from { transform: translateY(24px); opacity: .4; } to { transform: none; opacity: 1; } }
+/* iOS-style switch for checkboxes marked role="switch" */
+input[type="checkbox"][role="switch"] {
+  appearance: none; -webkit-appearance: none; width: 51px; height: 31px; border-radius: 999px; background: var(--bar-soft);
+  position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0; margin: 0;
+}
+input[type="checkbox"][role="switch"]::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25); transition: transform .2s cubic-bezier(.2,.8,.2,1);
+}
+input[type="checkbox"][role="switch"]:checked { background: var(--cobalt); }
+input[type="checkbox"][role="switch"]:checked::after { transform: translateX(20px); }
+.goal-fill { transition: stroke-dasharray .9s cubic-bezier(.2,.8,.2,1); }
 
 .dot-live { animation: pulse 1.4s infinite; }
 @keyframes pulse { 50% { opacity: .25; } }
-@media (prefers-reduced-motion: reduce) { .dot-live { animation: none; } * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .dot-live { animation: none; } dialog.sheet[open] { animation: none; } * { transition: none !important; } }
 
 .leaflet-container { background: var(--cobalt-soft); font-family: var(--font-sans); }
 .recharts-wrapper text { fill: var(--muted); font-size: 12px; }
