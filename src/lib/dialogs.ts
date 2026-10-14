@@ -3,6 +3,7 @@ import { createStore } from './store';
 export type DialogState =
   | { kind: null }
   | { kind: 'detail'; id: string }
+  | { kind: 'share'; id: string }
   | { kind: 'form'; id?: string }
   | { kind: 'day' }
   | { kind: 'settings' }

@@ -1,31 +1,236 @@
 import type { Activity, Settings } from '../types';
-import { dateLabel, fmtDist, fmtInt, fmtPace, fmtTime, typeWord, unitL } from './format';
-import { fitPath, project } from './geo';
+import { fmtDist, fmtInt, fmtPace, fmtTime, unitL } from './format';
+import { project } from './geo';
 
-/** 1080x1350 share card (Instagram portrait size) */
-export async function renderShareCard(a: Activity, s: Settings): Promise<Blob> {
-  try { await document.fonts.ready; } catch { /* noop */ }
-  const W = 1080, H = 1350, c = document.createElement('canvas');
+export type ShareStyle = 'night' | 'sunrise' | 'sticker';
+export type ShareFormat = 'post' | 'story';
+export const SHARE_SIZES: Record<ShareFormat, [number, number]> = { post: [1080, 1350], story: [1080, 1920] };
+
+interface Theme {
+  bg: ((x: CanvasRenderingContext2D, w: number, h: number) => void) | null;
+  contour: string | null;
+  text: string;
+  muted: string;
+  rule: string;
+  route: [string, string];   // start → end colour along the route
+  glow: string | null;
+  under: string | null;      // outline under the route for contrast
+  startFill: string;
+  endFill: string;
+  textShadow: string | null;
+  halo?: string;             // soft ring around the finish dot (defaults to the dot colour)
+}
+
+const THEMES: Record<ShareStyle, Theme> = {
+  // "Blue": plain Lakad blue, white route, yellow finish dot (the original Lakad look)
+  night: {
+    bg: (x, w, h) => { x.fillStyle = '#1F4FE0'; x.fillRect(0, 0, w, h); },
+    contour: null,
+    text: '#FFFFFF', muted: 'rgba(255,255,255,0.78)', rule: 'rgba(255,255,255,0.28)',
+    route: ['#FFFFFF', '#FFFFFF'], glow: null, under: null,
+    startFill: '#1F4FE0', endFill: '#FFB627', textShadow: null, halo: 'rgba(255,255,255,0.22)'
+  },
+  sunrise: {
+    bg: (x, w, h) => {
+      const g = x.createLinearGradient(0, 0, w * 0.25, h);
+      g.addColorStop(0, '#FFD173'); g.addColorStop(0.55, '#FFB039'); g.addColorStop(1, '#F58A2E');
+      x.fillStyle = g; x.fillRect(0, 0, w, h);
+      const r = x.createRadialGradient(w * 0.15, h * 0.1, 0, w * 0.15, h * 0.1, w);
+      r.addColorStop(0, 'rgba(255,248,226,0.55)'); r.addColorStop(1, 'rgba(255,248,226,0)');
+      x.fillStyle = r; x.fillRect(0, 0, w, h);
+    },
+    contour: 'rgba(14,27,51,0.075)',
+    text: '#0E1B33', muted: 'rgba(14,27,51,0.62)', rule: 'rgba(14,27,51,0.18)',
+    route: ['#0E1B33', '#1F4FE0'], glow: null, under: 'rgba(255,250,236,0.85)',
+    startFill: '#FFF8E6', endFill: '#1F4FE0', textShadow: null
+  },
+  sticker: {
+    bg: null, contour: null,
+    text: '#FFFFFF', muted: 'rgba(255,255,255,0.86)', rule: 'rgba(255,255,255,0.45)',
+    route: ['#FFFFFF', '#FFB627'], glow: 'rgba(0,0,0,0.35)', under: 'rgba(0,0,0,0.28)',
+    startFill: '#FFFFFF', endFill: '#FFB627', textShadow: 'rgba(0,0,0,0.45)'
+  }
+};
+
+const FONT = '"Archivo Variable", Archivo, system-ui, -apple-system, "Segoe UI", sans-serif';
+const font = (x: CanvasRenderingContext2D, weight: number, px: number, wide = false) => {
+  x.font = `${weight} ${px}px ${FONT}`;
+  if ('fontStretch' in x) (x as unknown as { fontStretch: string }).fontStretch = wide ? 'ultra-expanded' : 'normal';
+  if ('letterSpacing' in x) (x as unknown as { letterSpacing: string }).letterSpacing = wide ? `${-px * 0.02}px` : '0px';
+};
+
+function seedOf(id: string) { let h = 2166136261; for (const c of id) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) % 2147483646 + 1; }
+function rng(seed: number) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+
+/** Topographic contour lines from a smooth random field (marching squares), unique per activity */
+function contours(x: CanvasRenderingContext2D, w: number, h: number, color: string, seed: number) {
+  const r = rng(seed), waves = Array.from({ length: 5 }, () => ({ kx: (r() - 0.5) * 0.012, ky: (r() - 0.5) * 0.012, p: r() * 6.28, a: 0.5 + r() }));
+  const cell = 14, cols = Math.ceil(w / cell) + 1, rows = Math.ceil(h / cell) + 1, f = new Float32Array(cols * rows);
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    let v = 0; const px = i * cell, py = j * cell;
+    for (const q of waves) v += q.a * Math.sin(px * q.kx + py * q.ky + q.p);
+    f[j * cols + i] = v;
+  }
+  x.save(); x.strokeStyle = color; x.lineWidth = 2; x.lineCap = 'round';
+  x.beginPath();
+  for (let lv = -3; lv <= 3; lv += 0.32) {
+    for (let j = 0; j < rows - 1; j++) for (let i = 0; i < cols - 1; i++) {
+      const a = f[j * cols + i], b = f[j * cols + i + 1], c = f[(j + 1) * cols + i + 1], d = f[(j + 1) * cols + i];
+      const idx = (a > lv ? 8 : 0) | (b > lv ? 4 : 0) | (c > lv ? 2 : 0) | (d > lv ? 1 : 0);
+      if (idx === 0 || idx === 15) continue;
+      const X = i * cell, Y = j * cell, t = (p: number, q: number) => (lv - p) / (q - p);
+      const top: [number, number] = [X + cell * t(a, b), Y], right: [number, number] = [X + cell, Y + cell * t(b, c)];
+      const bottom: [number, number] = [X + cell * t(d, c), Y + cell], left: [number, number] = [X, Y + cell * t(a, d)];
+      const seg = (p: [number, number], q: [number, number]) => { x.moveTo(p[0], p[1]); x.lineTo(q[0], q[1]); };
+      switch (idx) {
+        case 1: case 14: seg(left, bottom); break;
+        case 2: case 13: seg(bottom, right); break;
+        case 3: case 12: seg(left, right); break;
+        case 4: case 11: seg(top, right); break;
+        case 5: seg(left, top); seg(bottom, right); break;
+        case 6: case 9: seg(top, bottom); break;
+        case 7: case 8: seg(left, top); break;
+        case 10: seg(top, right); seg(left, bottom); break;
+      }
+    }
+  }
+  x.stroke(); x.restore();
+}
+
+/** Route points fitted into a box, keeping aspect; null when there is no route */
+function fitRoute(a: Activity, bx: number, by: number, bw: number, bh: number) {
+  const xy = project(a.route);
+  if (!xy || xy.length < 2) return null;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const [px, py] of xy) { minX = Math.min(minX, px); maxX = Math.max(maxX, px); minY = Math.min(minY, py); maxY = Math.max(maxY, py); }
+  const rw = Math.max(maxX - minX, 1e-9), rh = Math.max(maxY - minY, 1e-9), s = Math.min(bw / rw, bh / rh);
+  const ox = bx + (bw - rw * s) / 2, oy = by + (bh - rh * s) / 2;
+  return xy.map(([px, py, br]) => [ox + (px - minX) * s, oy + (py - minY) * s, br ?? 0] as [number, number, number]);
+}
+
+const lerpColor = (c1: string, c2: string, t: number) => {
+  const p = (c: string) => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+  const a = p(c1), b = p(c2);
+  return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',')})`;
+};
+
+function drawRoute(x: CanvasRenderingContext2D, pts: [number, number, number][], th: Theme, width: number) {
+  const path = new Path2D();
+  pts.forEach(([px, py, br], i) => (i === 0 || br ? path.moveTo(px, py) : path.lineTo(px, py)));
+  x.save(); x.lineCap = 'round'; x.lineJoin = 'round';
+  if (th.glow) { x.shadowColor = th.glow; x.shadowBlur = width * 3.2; x.strokeStyle = th.route[0]; x.globalAlpha = 0.55; x.lineWidth = width; x.stroke(path); x.globalAlpha = 1; x.shadowBlur = 0; }
+  if (th.under) { x.strokeStyle = th.under; x.lineWidth = width + 10; x.stroke(path); }
+  const n = pts.length;
+  if (th.route[0] === th.route[1]) { x.strokeStyle = th.route[0]; x.lineWidth = width; x.stroke(path); }
+  // otherwise the colour shifts from start to finish
+  else for (let i = 1; i < n; i++) {
+    if (pts[i][2]) continue;
+    x.strokeStyle = lerpColor(th.route[0], th.route[1], i / (n - 1));
+    x.lineWidth = width;
+    x.beginPath(); x.moveTo(pts[i - 1][0], pts[i - 1][1]); x.lineTo(pts[i][0], pts[i][1]); x.stroke();
+  }
+  const [sx, sy] = pts[0], [ex, ey] = pts[n - 1];
+  x.fillStyle = th.startFill; x.strokeStyle = th.route[0]; x.lineWidth = width * 0.55;
+  x.beginPath(); x.arc(sx, sy, width * 1.05, 0, Math.PI * 2); x.fill(); x.stroke();
+  x.fillStyle = th.halo ?? th.endFill; x.globalAlpha = th.halo ? 1 : 0.25;
+  x.beginPath(); x.arc(ex, ey, width * 2.6, 0, Math.PI * 2); x.fill(); x.globalAlpha = 1;
+  x.fillStyle = th.endFill;
+  x.beginPath(); x.arc(ex, ey, width * 1.35, 0, Math.PI * 2); x.fill();
+  x.restore();
+}
+
+/** The Lakad mark: route line ending in a dot */
+function drawMark(x: CanvasRenderingContext2D, px: number, py: number, size: number, line: string, dot: string) {
+  const s = size / 24;
+  x.save(); x.translate(px, py); x.scale(s, s);
+  x.strokeStyle = line; x.lineWidth = 3; x.lineCap = 'round';
+  x.stroke(new Path2D('M3 18c4-1 5-9 9-9s5 8 9 7'));
+  x.fillStyle = dot; x.beginPath(); x.arc(21, 16, 2.8, 0, Math.PI * 2); x.fill();
+  x.restore();
+}
+
+export function shareTitle(a: Activity) {
+  if (a.note) return a.note;
+  const h = new Date(a.start).getHours();
+  const part = h < 5 ? 'Night' : h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : h < 21 ? 'Evening' : 'Night';
+  return `${part} ${a.type === 'run' ? 'run' : 'walk'}`;
+}
+
+function fitText(x: CanvasRenderingContext2D, text: string, max: number) {
+  if (x.measureText(text).width <= max) return text;
+  let t = text; while (t.length > 1 && x.measureText(t + '…').width > max) t = t.slice(0, -1);
+  return t + '…';
+}
+
+export function drawShareCard(c: HTMLCanvasElement, a: Activity, s: Settings, style: ShareStyle, format: ShareFormat) {
+  const [W, H] = SHARE_SIZES[format], th = THEMES[style], M = 84;
   c.width = W; c.height = H;
   const x = c.getContext('2d')!;
-  const font = (w: number, px: number) => `${w} ${px}px "Archivo Variable", Archivo, system-ui, sans-serif`;
-  x.fillStyle = '#1F4FE0'; x.fillRect(0, 0, W, H);
-  if ('fontStretch' in x) (x as unknown as { fontStretch: string }).fontStretch = 'expanded';
-  x.fillStyle = '#FFFFFF'; x.font = font(800, 44); x.fillText('Lakad', 80, 120);
-  x.globalAlpha = 0.8; x.font = font(500, 36); x.fillText(`${typeWord(a.type)} · ${dateLabel(a.start)}`, 80, 180); x.globalAlpha = 1;
-  const f = fitPath(project(a.route), 920, 560, 30);
-  if (f) {
-    x.save(); x.translate(80, 240);
-    x.strokeStyle = '#FFFFFF'; x.lineWidth = 12; x.lineCap = 'round'; x.lineJoin = 'round';
-    x.stroke(new Path2D(f.d));
-    x.fillStyle = '#FFB627'; x.beginPath(); x.arc(f.end[0], f.end[1], 18, 0, Math.PI * 2); x.fill();
-    x.restore();
-  }
-  x.fillStyle = '#FFFFFF'; x.font = font(900, 230); x.fillText(fmtDist(a.distance, s.units), 70, 1050);
-  x.font = font(700, 48); x.fillText(unitL(s.units), 84, 1115);
-  [[fmtTime(a.duration), 'time'], [fmtPace(a.duration, a.distance, s.units), `pace /${unitL(s.units)}`], [fmtInt(a.steps), 'steps']].forEach(([v, l], i) => {
-    x.fillStyle = '#FFFFFF'; x.font = font(800, 60); x.fillText(v, 80 + i * 330, 1235);
-    x.globalAlpha = 0.75; x.font = font(500, 32); x.fillText(l, 80 + i * 330, 1280); x.globalAlpha = 1;
+  x.clearRect(0, 0, W, H);
+  th.bg?.(x, W, H);
+  if (th.contour) contours(x, W, H, th.contour, seedOf(a.id));
+  x.textBaseline = 'alphabetic';
+  if (th.textShadow) { x.shadowColor = th.textShadow; x.shadowBlur = 18; x.shadowOffsetY = 2; }
+
+  // Stories: keep clear of the app controls Instagram/Facebook draw over the top and bottom
+  const story = format === 'story', hy = story ? 150 : 0;
+  // Header: mark + wordmark, date on the right
+  drawMark(x, M, 92 + hy, 56, style === 'sunrise' ? '#0E1B33' : '#FFFFFF', style === 'sunrise' ? '#1F4FE0' : '#FFB627');
+  x.fillStyle = th.text; font(x, 900, 46, true); x.fillText('Lakad', M + 68, 136 + hy);
+  const d = new Date(a.start);
+  x.textAlign = 'right'; font(x, 600, 30); x.fillStyle = th.text;
+  x.fillText(d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }), W - M, 112 + hy);
+  x.fillStyle = th.muted; font(x, 500, 28);
+  x.fillText(d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }), W - M, 150 + hy);
+  x.textAlign = 'left';
+
+  // Footer block (measured from the bottom)
+  const u = s.units;
+  const statsY = H - (story ? 300 : 120), distY = statsY - (story ? 150 : 118), titleY = distY - (story ? 270 : 238);
+  x.fillStyle = th.text; font(x, 700, story ? 48 : 42);
+  x.fillText(fitText(x, shareTitle(a), W - 2 * M), M, titleY);
+
+  const dist = fmtDist(a.distance, u);
+  font(x, 900, story ? 250 : 220, true); x.fillStyle = th.text;
+  x.fillText(dist, M - 8, distY);
+  const dw = x.measureText(dist).width;
+  font(x, 700, story ? 60 : 52, true); x.fillStyle = th.muted;
+  x.fillText(unitL(u), M + dw + 14, distY);
+
+  // Stats row with a hairline above
+  x.shadowBlur = 0; x.fillStyle = th.rule; x.fillRect(M, statsY - 96, W - 2 * M, 2);
+  if (th.textShadow) x.shadowBlur = 18;
+  const stats: [string, string][] = [
+    [fmtTime(a.duration), 'Time'],
+    [fmtPace(a.duration, a.distance, u), `Pace /${unitL(u)}`],
+    [fmtInt(a.steps), 'Steps'],
+    [a.elevGain != null ? `${fmtInt(a.elevGain)} m` : '–', 'Climb']
+  ];
+  const colW = (W - 2 * M) / stats.length;
+  stats.forEach(([v, l], i) => {
+    const cx = M + i * colW;
+    x.fillStyle = th.text; font(x, 800, story ? 50 : 46, true); x.fillText(fitText(x, v, colW - 16), cx, statsY - 14);
+    x.fillStyle = th.muted; font(x, 500, story ? 28 : 26); x.fillText(l, cx, statsY + 28);
   });
+  x.shadowBlur = 0; x.shadowOffsetY = 0;
+
+  // Route fills the space between header and title
+  const top = 200 + hy, bottom = titleY - (story ? 110 : 90);
+  const pts = fitRoute(a, M + 10, top + 10, W - 2 * M - 20, bottom - top - 20);
+  const lw = story ? 15 : 13;
+  if (pts) drawRoute(x, pts, th, lw);
+  else {
+    // indoor or manual entry: the Lakad mark, large
+    const size = Math.min(W - 2 * M, bottom - top) * 0.62;
+    drawMark(x, (W - size) / 2, top + (bottom - top - size) / 2, size, th.route[0], th.endFill);
+    x.fillStyle = th.muted; font(x, 600, 30); x.textAlign = 'center';
+    x.fillText(a.indoor ? 'Indoor' : 'Added by hand', W / 2, bottom - 10); x.textAlign = 'left';
+  }
+  return c;
+}
+
+export async function renderShareCard(a: Activity, s: Settings, style: ShareStyle = 'night', format: ShareFormat = 'post'): Promise<Blob> {
+  try { await document.fonts.ready; } catch { /* noop */ }
+  const c = drawShareCard(document.createElement('canvas'), a, s, style, format);
   return new Promise((res, rej) => c.toBlob(b => (b ? res(b) : rej(new Error('Image failed'))), 'image/png'));
 }
