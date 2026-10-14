@@ -13,7 +13,7 @@ import { Actions, Button, ErrorText, Field, SheetTitle } from '../components/ui'
 import type { Units } from '../types';
 
 function Toggle({ label, checked, set }: { label: string; checked: boolean; set: (v: boolean) => void }) {
-  return <label className="mt-3.5 flex items-center justify-between gap-3"><span>{label}</span><input type="checkbox" className="h-[22px] w-[22px] accent-cobalt" checked={checked} onChange={e => set(e.target.checked)} /></label>;
+  return <label className="mt-3.5 flex items-center justify-between gap-3"><span>{label}</span><input type="checkbox" role="switch" checked={checked} onChange={e => set(e.target.checked)} /></label>;
 }
 const Sec = ({ title, sub }: { title: string; sub?: string }) => <><h4 className="m-0 text-base font-bold">{title}</h4>{sub && <p className="m-0 mt-1 text-sm text-muted">{sub}</p>}</>;
 

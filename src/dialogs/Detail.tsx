@@ -5,9 +5,10 @@ import { account } from '../lib/account';
 import { feed, postActivity, removePostFor } from '../lib/feed';
 import { calories } from '../lib/metrics';
 import { splitsOf } from '../lib/geo';
-import { dateLabel, fmtDist, fmtInt, fmtP, fmtPace, fmtTime, timeLabel, typeWord, unitL, unitM, ymd } from '../lib/format';
+import { dateLabel, fmtDist, fmtInt, fmtP, fmtPace, fmtTime, timeLabel, unitL, unitM, ymd } from '../lib/format';
 import { closeDialog, openDialog } from '../lib/dialogs';
-import { renderShareCard } from '../lib/shareImage';
+import { shareTitle } from '../lib/shareImage';
+import { IconShare } from '../components/icons';
 import { saveFile } from '../lib/files';
 import { activityGpx } from '../lib/exporters';
 import { toast } from '../lib/ui';
@@ -36,7 +37,7 @@ export function Detail({ id }: { id: string }) {
   return (
     <>
       <p className="m-0 text-sm text-muted">{dateLabel(a.start)} · {timeLabel(a.start)}</p>
-      <SheetTitle>{typeWord(a.type)}{a.note ? `: ${a.note}` : ''}</SheetTitle>
+      <SheetTitle>{shareTitle(a)}</SheetTitle>
       {a.route.length > 1 && <Suspense fallback={<div className="mt-3.5 aspect-[4/3] rounded-[18px] bg-cobalt-soft" />}><RouteMap route={a.route} className="mt-3.5 aspect-[4/3]" /></Suspense>}
       <div className="my-[18px] grid grid-cols-2 gap-3">
         <Stat big v={fmtDist(a.distance, u)} l={`${unitL(u)}${a.indoor ? ' (indoor, from steps)' : a.distanceEdited ? ' (edited)' : ''}`} />
@@ -68,7 +69,7 @@ export function Detail({ id }: { id: string }) {
         </>
       )}
       <Actions>
-        <Button variant="primary" disabled={!!busy} onClick={() => run('img', async () => { await saveFile(`lakad-${a.type}-${ymd(a.start)}.png`, await renderShareCard(a, settings), 'image/png', 'share'); })}>{busy === 'img' ? 'Making image…' : 'Share image'}</Button>
+        <Button variant="primary" disabled={!!busy} onClick={() => openDialog({ kind: 'share', id: a.id })}><IconShare />Share image</Button>
         {a.route.length > 1 && <Button disabled={!!busy} onClick={() => run('gpx', () => saveFile(`lakad-${a.type}-${ymd(a.start)}.gpx`, activityGpx(a), 'application/gpx+xml'))}>Export GPX</Button>}
       </Actions>
       {acc.enabled && (
