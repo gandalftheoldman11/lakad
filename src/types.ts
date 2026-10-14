@@ -21,7 +21,8 @@ export interface Activity {
   deleted?: boolean;
 }
 
-export interface DayEntry { date: number; steps: number; updatedAt: number }
+/** auto = read from the iPhone's step counter rather than typed in */
+export interface DayEntry { date: number; steps: number; updatedAt: number; auto?: boolean }
 
 export type Units = 'km' | 'mi';
 export interface Settings {
@@ -34,6 +35,10 @@ export interface Settings {
   voice: boolean;
   /** show live distance/steps on the lock screen while recording (apps only) */
   lockScreen: boolean;
+  /** metres hidden at the start and end of routes in share images, GPX exports and feed posts (0 = off) */
+  privacyTrim: number;
+  /** finished the first-time setup */
+  onboarded: boolean;
   /** step length in metres learned from your GPS walks/runs (0 = estimate from height) */
   strideWalk: number;
   strideRun: number;
@@ -44,7 +49,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  goal: 8000, units: 'km', weekGoal: 0, height: 0, weight: 0, autoPause: true, voice: true, lockScreen: true, strideWalk: 0, strideRun: 0, strideWalkN: 0, strideRunN: 0, updatedAt: 0
+  goal: 8000, units: 'km', weekGoal: 0, height: 0, weight: 0, autoPause: true, voice: true, lockScreen: true, privacyTrim: 200, onboarded: false, strideWalk: 0, strideRun: 0, strideWalkN: 0, strideRunN: 0, updatedAt: 0
 };
 
 export interface FeedPost {

@@ -12,6 +12,8 @@ import { Progress } from './screens/Progress';
 import { Feed } from './screens/Feed';
 import { Detail } from './dialogs/Detail';
 import { ShareSheet } from './dialogs/ShareSheet';
+import { Onboarding } from './components/Onboarding';
+import { saveSettings } from './lib/data';
 import { ActivityForm } from './dialogs/ActivityForm';
 import { DaySteps } from './dialogs/DaySteps';
 import { Finish } from './dialogs/Finish';
@@ -34,7 +36,11 @@ function NavItem({ label, active, onClick, children }: { label: string; active: 
 
 export default function App() {
   const [tab, setTab] = useState<Tab>(() => (rec.get().session ? 'record' : 'today'));
-  const { ready } = useStore(data);
+  const { ready, settings, acts } = useStore(data);
+  // People who already use Lakad (activities or body details saved) skip the first-time setup
+  const existingUser = acts.length > 0 || settings.height > 0 || settings.updatedAt > 0;
+  useEffect(() => { if (ready && !settings.onboarded && existingUser) void saveSettings({ onboarded: true }); }, [ready, settings.onboarded, existingUser]);
+  const showOnboarding = ready && !settings.onboarded && !existingUser;
   const recording = useSel(rec, s => !!s.session);
   const updateReady = useSel(pwa, s => s.updateReady);
   const { d } = useStore(dialogs);
@@ -60,10 +66,11 @@ export default function App() {
   }, []);
 
   if (!ready) return <div className="grid min-h-dvh place-items-center text-muted">Loading…</div>;
+  if (showOnboarding) return <><Onboarding /><Toast /></>;
 
   return (
     <>
-      <main className="mx-auto max-w-[560px] px-5 pt-5 pb-36">
+      <main className={`mx-auto max-w-[560px] px-5 pt-5 ${tab === 'record' ? 'pb-[calc(var(--nav-h)+env(safe-area-inset-bottom,0px))]' : 'pb-36'}`}>
         {updateReady && !recording && (
           <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-cobalt-soft px-4 py-3">
             <span>A new version of Lakad is ready.</span>

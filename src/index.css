@@ -3,6 +3,8 @@
 @import "leaflet/dist/leaflet.css";
 
 :root {
+  /* space the floating tab bar takes at the bottom (bar + raised Record button + gap) */
+  --nav-h: 116px;
   --bg: #EDF0F5; --surface: #FFFFFF; --surface-2: #F4F6FA; --ink: #0E1B33; --muted: #5B6780; --line: #DDE3EC;
   --cobalt: #1F4FE0; --cobalt-soft: #DFE7FF; --mango: #FFB627; --mango-soft: #FFF1CF;
   --bar-soft: #CDD5E2; --danger: #C0352B; --ok: #1E9E5A; --on-cobalt: #FFFFFF;
@@ -96,3 +98,12 @@ input[type="checkbox"][role="switch"]:checked::after { transform: translateX(20p
 .leaflet-container { background: var(--cobalt-soft); font-family: var(--font-sans); }
 .recharts-wrapper text { fill: var(--muted); font-size: 12px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Record screen: exactly the visible height between the top and the tab bar */
+.fit-screen {
+  height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 20px - var(--nav-h));
+  height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 20px - var(--nav-h));
+  display: flex; flex-direction: column; min-height: 0;
+}
+.size-box { container-type: size; }
+.no-scrollbar { scrollbar-width: none; } .no-scrollbar::-webkit-scrollbar { display: none; }

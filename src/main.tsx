@@ -14,6 +14,6 @@ loadPending();
 if (isNative) void import('./lib/liveStatus').then(m => m.endLive());
 document.addEventListener('visibilitychange', () => persistRecording());
 
-loadData().then(() => initSync());
+loadData().then(() => { initSync(); void import('./lib/phoneSteps').then(m => m.initPhoneSteps()); });
 
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
