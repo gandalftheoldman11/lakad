@@ -3,6 +3,7 @@
   "appName": "Lakad",
   "webDir": "dist",
   "android": {
-    "useLegacyBridge": true
+    "useLegacyBridge": true,
+    "adjustMarginsForEdgeToEdge": "auto"
   }
 }
