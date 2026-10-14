@@ -2,7 +2,8 @@ import type { Activity, FeedPost } from '../types';
 import { supabase } from './supabase';
 import { account } from './account';
 import { createStore } from './store';
-import { shapeFromRoute } from './geo';
+import { shapeFromRoute, trimRoute } from './geo';
+import { data } from './data';
 
 export const feed = createStore({
   loading: false,
@@ -50,7 +51,7 @@ export async function postActivity(a: Activity) {
   const { error } = await supabase.from('posts').upsert({
     user_id: u, act_id: a.id, type: a.type, distance: Math.round(a.distance), duration: Math.round(a.duration), steps: a.steps,
     elev_gain: a.elevGain == null ? null : Math.round(a.elevGain), note: (a.note || '').slice(0, 140) || null,
-    shape: shapeFromRoute(a.route), start: a.start
+    shape: shapeFromRoute(trimRoute(a.route, data.get().settings.privacyTrim ?? 200)), start: a.start
   }, { onConflict: 'user_id,act_id' });
   if (error) throw error;
   await loadFeed();

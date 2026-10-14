@@ -89,3 +89,19 @@ export function thinRoute(route: RoutePoint[], max = 600): RoutePoint[] {
   const k = Math.ceil(route.length / max);
   return route.filter((p, i) => i % k === 0 || p[3] || (i + 1 < route.length && route[i + 1][3]) || i === route.length - 1);
 }
+
+/**
+ * Privacy zone: removes the first and last `meters` of a route (measured along the path),
+ * so shared images, GPX files and feed posts don't reveal where you start and finish, often your home.
+ * Routes shorter than both zones plus 50 m are hidden completely.
+ */
+export function trimRoute(route: RoutePoint[], meters: number): RoutePoint[] {
+  if (!meters || route.length < 2) return route;
+  const cum = [0];
+  for (let i = 1; i < route.length; i++) cum.push(cum[i - 1] + (route[i][3] ? 0 : hav(route[i - 1], route[i])));
+  const total = cum[cum.length - 1];
+  if (total < meters * 2 + 50) return [];
+  const kept = route.filter((_, i) => cum[i] >= meters && cum[i] <= total - meters);
+  if (kept.length && kept[0][3]) kept[0] = [kept[0][0], kept[0][1], kept[0][2]];
+  return kept.length > 1 ? kept : [];
+}

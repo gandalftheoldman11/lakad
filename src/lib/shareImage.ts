@@ -1,6 +1,6 @@
 import type { Activity, Settings } from '../types';
 import { fmtDist, fmtInt, fmtPace, fmtTime, unitL } from './format';
-import { project } from './geo';
+import { project, trimRoute } from './geo';
 
 export type ShareStyle = 'night' | 'sunrise' | 'sticker';
 export type ShareFormat = 'post' | 'story';
@@ -98,8 +98,8 @@ function contours(x: CanvasRenderingContext2D, w: number, h: number, color: stri
 }
 
 /** Route points fitted into a box, keeping aspect; null when there is no route */
-function fitRoute(a: Activity, bx: number, by: number, bw: number, bh: number) {
-  const xy = project(a.route);
+function fitRoute(route: Activity['route'], bx: number, by: number, bw: number, bh: number) {
+  const xy = project(route);
   if (!xy || xy.length < 2) return null;
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   for (const [px, py] of xy) { minX = Math.min(minX, px); maxX = Math.max(maxX, px); minY = Math.min(minY, py); maxY = Math.max(maxY, py); }
@@ -216,7 +216,8 @@ export function drawShareCard(c: HTMLCanvasElement, a: Activity, s: Settings, st
 
   // Route fills the space between header and title
   const top = 200 + hy, bottom = titleY - (story ? 110 : 90);
-  const pts = fitRoute(a, M + 10, top + 10, W - 2 * M - 20, bottom - top - 20);
+  const shared = trimRoute(a.route, s.privacyTrim ?? 200);
+  const pts = fitRoute(shared, M + 10, top + 10, W - 2 * M - 20, bottom - top - 20);
   const lw = story ? 15 : 13;
   if (pts) drawRoute(x, pts, th, lw);
   else {
@@ -224,7 +225,7 @@ export function drawShareCard(c: HTMLCanvasElement, a: Activity, s: Settings, st
     const size = Math.min(W - 2 * M, bottom - top) * 0.62;
     drawMark(x, (W - size) / 2, top + (bottom - top - size) / 2, size, th.route[0], th.endFill);
     x.fillStyle = th.muted; font(x, 600, 30); x.textAlign = 'center';
-    x.fillText(a.indoor ? 'Indoor' : 'Added by hand', W / 2, bottom - 10); x.textAlign = 'left';
+    x.fillText(a.indoor ? 'Indoor' : a.route.length > 1 ? 'Route hidden for privacy' : 'Added by hand', W / 2, bottom - 10); x.textAlign = 'left';
   }
   return c;
 }

@@ -51,8 +51,8 @@ export async function deleteActivity(id: string) {
   data.set({ all, acts: visible(all) });
   await persist(); onChange?.();
 }
-export async function saveDay(date: number, steps: number) {
-  const days = { ...data.get().days, [date]: { date, steps: Math.max(0, Math.round(steps)), updatedAt: Date.now() } };
+export async function saveDay(date: number, steps: number, auto = false) {
+  const days = { ...data.get().days, [date]: { date, steps: Math.max(0, Math.round(steps)), updatedAt: Date.now(), ...(auto ? { auto: true } : {}) } };
   data.set({ days });
   await persist(); onChange?.();
 }
