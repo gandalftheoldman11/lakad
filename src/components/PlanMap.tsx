@@ -43,7 +43,7 @@ export default function PlanMap({ center, start, waypoints = [], route = [], opt
   const col = accent();
   const fitTo = route.length > 1 ? route : options.find(o => o.active)?.coords ?? [];
   return (
-    <div className={`overflow-hidden rounded-[20px] ${className}`}>
+    <div className={`isolate overflow-hidden rounded-[20px] ${className}`}>
       <MapContainer center={center ?? [12.5, 122]} zoom={center ? 15 : 5} className="h-full w-full" zoomControl={false} attributionControl>
         <TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19}
           attribution={`&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · Routes: OSRM/FOSSGIS`} />
