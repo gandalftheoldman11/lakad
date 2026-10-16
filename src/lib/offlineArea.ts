@@ -12,7 +12,7 @@ import { footRoute } from './routing';
  */
 
 const OVERPASS = 'https://overpass-api.de/api/interpreter';
-export const AREA_RADIUS = 5000;
+export const AREA_RADIUS = 15000;
 /** street classes for drawing: 0 = main road, 1 = street, 2 = path */
 export type StreetClass = 0 | 1 | 2;
 
@@ -165,11 +165,12 @@ export async function loadArea() {
 }
 
 export async function saveAreaAround(center: LatLng, radius = AREA_RADIUS) {
-  offline.set({ saving: true, error: '', progress: 'Downloading streets and paths…' });
+  offline.set({ saving: true, error: '', progress: 'Downloading streets and paths (can take a minute)…' });
   try {
     // walkable ways with their tags (for street types), then just the coordinates of their nodes
-    const q = `[out:json][timeout:60];way["highway"]["highway"!~"^(motorway|motorway_link|trunk_link|construction|proposed|raceway|bus_guideway|elevator|corridor)$"]["foot"!~"^(no)$"]["access"!~"^(private|no)$"](around:${radius},${center[0].toFixed(5)},${center[1].toFixed(5)})->.w;.w out body qt;node(w.w);out skel qt;`;
-    const res = await fetch(OVERPASS, { method: 'POST', body: new URLSearchParams({ data: q }) });
+    const q = `[out:json][timeout:180];way["highway"]["highway"!~"^(motorway|motorway_link|trunk_link|construction|proposed|raceway|bus_guideway|elevator|corridor)$"]["foot"!~"^(no)$"]["access"!~"^(private|no)$"](around:${radius},${center[0].toFixed(5)},${center[1].toFixed(5)})->.w;.w out body qt;node(w.w);out skel qt;`;
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 200000);
+    const res = await fetch(OVERPASS, { method: 'POST', body: new URLSearchParams({ data: q }), signal: ctl.signal }).finally(() => clearTimeout(t));
     if (!res.ok) throw new Error(res.status === 429 || res.status === 504 ? 'busy' : 'failed');
     const json = await res.json();
     offline.set({ progress: 'Preparing your area…' });
