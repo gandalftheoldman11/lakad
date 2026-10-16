@@ -38,7 +38,7 @@ export function Detail({ id }: { id: string }) {
     <>
       <p className="m-0 text-sm text-muted">{dateLabel(a.start)} · {timeLabel(a.start)}</p>
       <SheetTitle>{shareTitle(a)}</SheetTitle>
-      {a.route.length > 1 && <Suspense fallback={<div className="mt-3.5 aspect-[4/3] rounded-[18px] bg-cobalt-soft" />}><RouteMap route={a.route} className="mt-3.5 aspect-[4/3]" /></Suspense>}
+      {a.route.length > 1 && <Suspense fallback={<div className="mt-3.5 aspect-[4/3] rounded-[18px] bg-cobalt-soft" />}><RouteMap route={a.route} animate className="mt-3.5 aspect-[4/3]" /></Suspense>}
       <div className="my-[18px] grid grid-cols-2 gap-3">
         <Stat big v={fmtDist(a.distance, u)} l={`${unitL(u)}${a.indoor ? ' (indoor, from steps)' : a.distanceEdited ? ' (edited)' : ''}`} />
         <Stat big v={fmtTime(a.duration)} l="moving time" />
