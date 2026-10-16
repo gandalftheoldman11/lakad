@@ -119,6 +119,20 @@ input[type="checkbox"][role="switch"]:checked::after { transform: translateX(20p
 @media (prefers-reduced-motion: reduce) { .dot-live { animation: none; } dialog.sheet[open] { animation: none; } * { transition: none !important; } }
 
 .leaflet-container { background: #F2EFE9; font-family: var(--font-sans); }   /* map paper colour, so a gap between tiles never shows as a dark line */
+/* bigger tap areas without changing how things look (44 px minimum); in the components layer so utilities like `absolute` still win */
+@layer components {
+  .hit, .hit-y { position: relative; }
+  .hit::after { content: ''; position: absolute; inset: -6px -6px; }
+  .hit-y::after { content: ''; position: absolute; inset: -5px 0; }
+}
+/* map zoom buttons: easier to hit on every map */
+.leaflet-control-zoom a { width: 42px !important; height: 42px !important; line-height: 42px !important; font-size: 21px !important; }
+/* zoom buttons in Lakad's own style: theme colours, rounded */
+.leaflet-bar.leaflet-control-zoom { border: 0 !important; border-radius: 14px !important; overflow: hidden; box-shadow: var(--lift) !important; }
+.leaflet-control-zoom a { background: var(--surface) !important; color: var(--ink) !important; border-bottom-color: var(--line) !important; font-family: var(--font-sans) !important; font-weight: 600; }
+.leaflet-control-zoom a:hover { background: var(--surface-2) !important; }
+/* a row that scrolls sideways fades out at the edge instead of cutting words */
+.edge-fade { mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
 .fullmap .leaflet-bottom.leaflet-right { margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); }   /* full-screen map: zoom buttons above Pause/Finish */
 .fullmap [data-map-button] { bottom: calc(env(safe-area-inset-bottom, 0px) + 104px); left: 14px; }   /* Re-center above Pause/Finish */
 .fullmap .leaflet-control-zoom a { width: 40px; height: 40px; line-height: 40px; font-size: 22px; }
@@ -216,7 +230,15 @@ input[type="checkbox"][role="switch"]:checked::after { transform: translateX(20p
 .lu-glow { animation: lu-glow 1.4s ease-out .4s both; }
 @keyframes lu-glow { 0% { scale: .3; opacity: 0; } 50% { opacity: 1; } 100% { scale: 1; opacity: .8; } }
 
+/* friend profile card */
+.fc-float { animation: fc-float 3.4s ease-in-out infinite; }
+@keyframes fc-float { 0%, 100% { translate: 0 0; opacity: .7; } 50% { translate: 0 -7px; opacity: 1; } }
+@property --lr { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.legend-ring { background: conic-gradient(from var(--lr), #F2A100, #FFE27A, #FFF8D8, #FFE27A, #F2A100 35%, #8A5A00 50%, #F2A100 65%, #FFE27A 85%, #F2A100); animation: legend-ring 5s linear infinite; }
+@keyframes legend-ring { to { --lr: 360deg; } }
+
 @media (prefers-reduced-motion: reduce) {
+  .fc-float, .legend-ring { animation: none !important; }
   .bdg-tap, .burst-p, .burst-ring, .lu-flame, .lu-ripple, .lu-strike, .lu-flash, .lu-glow { animation: none !important; }
   .lu-strike, .lu-flash { display: none; }
   .bdg-on .bdg-twinkle, .bdg-on .bdg-sweep, .bdg-on .bdg-glow, .bdg-on .bdg-wings, .bdg-pop, .bdg-rays, .fx-flame, .fx-orbit { animation: none !important; }
