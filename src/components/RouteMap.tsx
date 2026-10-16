@@ -69,21 +69,24 @@ function DrawIn({ duration = 1300 }: { duration?: number }) {
     let done = false;
     const t = setTimeout(() => {
       const paths = [...box.querySelectorAll<SVGPathElement>('path.lakad-route')];
+      const casings = [...box.querySelectorAll<SVGPathElement>('path.lakad-route-casing')];
       const lens = paths.map(p => p.getTotalLength());
       const total = lens.reduce((a, b) => a + b, 0) || 1;
       let at = 0;
       paths.forEach((p, i) => {
         const L = lens[i], d = (L / total) * duration;
-        p.style.transition = 'none'; p.style.strokeDasharray = `${L} ${L}`; p.style.strokeDashoffset = `${L}`;
-        p.getBoundingClientRect();   // apply the start state before animating
-        p.style.transition = `stroke-dashoffset ${d}ms ${i === 0 ? 'cubic-bezier(.3,.1,.3,1)' : 'linear'} ${at}ms`;
-        p.style.strokeDashoffset = '0';
+        for (const q of [p, casings[i]].filter(Boolean) as SVGPathElement[]) {
+          q.style.transition = 'none'; q.style.strokeDasharray = `${L} ${L}`; q.style.strokeDashoffset = `${L}`;
+          q.getBoundingClientRect();   // apply the start state before animating
+          q.style.transition = `stroke-dashoffset ${d}ms ${i === 0 ? 'cubic-bezier(.3,.1,.3,1)' : 'linear'} ${at}ms`;
+          q.style.strokeDashoffset = '0';
+        }
         at += d;
       });
       box.classList.remove('animate-route');
       setTimeout(() => {
         if (done) return;
-        paths.forEach(p => { p.style.transition = ''; p.style.strokeDasharray = ''; p.style.strokeDashoffset = ''; });
+        [...paths, ...casings].forEach(p => { p.style.transition = ''; p.style.strokeDasharray = ''; p.style.strokeDashoffset = ''; });
         box.querySelectorAll('.lakad-end').forEach(e => e.classList.add('route-end'));
       }, duration + 60);
     }, 320);
@@ -108,7 +111,8 @@ export default function RouteMap({ route, follow, here, className = '', animate,
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
         {plan && plan.length > 1 && <Polyline positions={plan} pathOptions={{ color: accentColor(), weight: 5, opacity: 0.45, dashArray: '2 10', lineCap: 'round' }} />}
         {goal && <CircleMarker center={goal} radius={8} pathOptions={{ color: '#0E1B33', weight: 2.5, fillColor: '#FFB627', fillOpacity: 1 }} />}
-        {segs.map((s, i) => <Polyline key={i} positions={s} className="lakad-route" pathOptions={{ color: accentColor(), weight: 5, lineCap: 'round', lineJoin: 'round' }} />)}
+        {segs.map((s, i) => <Polyline key={`c${i}`} positions={s} className="lakad-route-casing" interactive={false} pathOptions={{ color: '#0E1B33', opacity: 0.55, weight: 8.5, lineCap: 'round', lineJoin: 'round' }} />)}
+        {segs.map((s, i) => <Polyline key={i} positions={s} className="lakad-route" pathOptions={{ color: accentColor(), weight: 5.5, lineCap: 'round', lineJoin: 'round' }} />)}
         {first && <CircleMarker center={[first[0], first[1]]} radius={6} pathOptions={{ color: accentColor(), fillColor: '#FFFFFF', fillOpacity: 1, weight: 3 }} />}
         {here && here[2] <= 500 && <Circle center={[here[0], here[1]]} radius={here[2]} pathOptions={{ color: accentColor(), weight: 1, fillColor: accentColor(), fillOpacity: 0.12 }} />}
         {here

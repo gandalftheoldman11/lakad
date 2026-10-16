@@ -54,9 +54,13 @@ export default function PlanMap({ center, start, waypoints = [], route = [], opt
           <Polyline key={`o${i}`} positions={o.coords} pathOptions={{ color: col, weight: 4, opacity: 0.35 }} eventHandlers={{ click: () => o.onPick?.() }} />
         ))}
         {options.filter(o => o.active).map((o, i) => (
-          <Polyline key={`a${i}`} positions={o.coords} pathOptions={{ color: col, weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} />
+          <Polyline key={`ac${i}`} positions={o.coords} interactive={false} pathOptions={{ color: '#0E1B33', opacity: 0.55, weight: 9.5, lineCap: 'round', lineJoin: 'round' }} />
         ))}
-        {route.length > 1 && <Polyline positions={route} pathOptions={{ color: col, weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round' }} />}
+        {options.filter(o => o.active).map((o, i) => (
+          <Polyline key={`a${i}`} positions={o.coords} pathOptions={{ color: col, weight: 6, opacity: 1, lineCap: 'round', lineJoin: 'round' }} />
+        ))}
+        {route.length > 1 && <Polyline positions={route} pathOptions={{ color: '#0E1B33', opacity: 0.55, weight: 9.5, lineCap: 'round', lineJoin: 'round' }} interactive={false} />}
+        {route.length > 1 && <Polyline positions={route} pathOptions={{ color: col, weight: 6, opacity: 1, lineCap: 'round', lineJoin: 'round' }} />}
         {waypoints.map((p, i) => <CircleMarker key={`w${i}`} center={p} radius={6} pathOptions={{ color: '#fff', weight: 2.5, fillColor: col, fillOpacity: 1 }} />)}
         {start && (
           <CircleMarker center={start} radius={9} pathOptions={{ color: '#fff', weight: 3, fillColor: '#0E1B33', fillOpacity: 1 }}>
