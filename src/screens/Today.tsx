@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { buzz } from '../lib/alerts';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { useStore } from '../lib/store';
 import { data } from '../lib/data';
 import { stepsByDay, streak, sumWhere } from '../lib/metrics';
-import { fmtDist, fmtDur, fmtInt, sod, unitL, unitM, weekStart } from '../lib/format';
+import { fmtDist, fmtDur, fmtInt, sod, unitL, unitM, weekStart, ymd } from '../lib/format';
 import { openDialog } from '../lib/dialogs';
 import { TopBar } from '../components/TopBar';
 import { WeekSteps } from '../components/charts';
@@ -22,6 +23,16 @@ export function Today({ go }: { go: (t: 'record') => void }) {
   const st = streak(map, g);
   const needBody = !settings.height || !settings.weight;
   const dateLine = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  // The first time you see your goal met each day: the dot pops and the phone gives a short buzz
+  const goalMet = g > 0 && steps >= g;
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    if (!goalMet) return;
+    const key = 'lakad.goalCelebrated', day = ymd(today);
+    try { if (localStorage.getItem(key) === day) return; localStorage.setItem(key, day); } catch { return; }
+    const t = setTimeout(() => { setCelebrate(true); void buzz(); }, 1000);   // after the count-up and path fill
+    return () => clearTimeout(t);
+  }, [goalMet, today]);
 
   return (
     <>
@@ -33,10 +44,10 @@ export function Today({ go }: { go: (t: 'record') => void }) {
         <div className="num huge"><AnimatedNumber value={steps} format={fmtInt} duration={1100} countUpKey="today-steps" /></div>
         <p className="mt-3 mb-0 text-[16px]">
           {steps >= g
-            ? <><strong className="font-semibold">Goal reached.</strong> <span className="text-muted">{fmtInt(steps - g)} steps past {fmtInt(g)}.</span></>
+            ? <span className={celebrate ? 'fade-up inline-block' : ''}><strong className="font-semibold">Goal reached.</strong> <span className="text-muted">{fmtInt(steps - g)} steps past {fmtInt(g)}.</span></span>
             : <><strong className="font-semibold">{fmtInt(g - steps)} steps</strong> <span className="text-muted">to your {fmtInt(g)} goal.</span></>}
         </p>
-        <div className="mt-5 -mx-1"><GoalPath value={steps} max={g} label="Daily step goal" /></div>
+        <div className="mt-5 -mx-1"><GoalPath value={steps} max={g} label="Daily step goal" celebrate={celebrate} /></div>
         <div className="mt-1 flex justify-end">
           {days[today]?.auto
             ? <span className="text-[13px] text-muted">From your iPhone step counter · <LinkButton className="text-[13px]" onClick={() => openDialog({ kind: 'day' })}>Edit</LinkButton></span>

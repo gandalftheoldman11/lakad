@@ -2,7 +2,7 @@ import { lazy, Suspense, useState } from 'react';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { useStore } from '../lib/store';
 import { data } from '../lib/data';
-import { rec, start, pause, resume, elapsed, stepInfo, currentPace, type Session } from '../lib/recorder';
+import { rec, start, pause, resume, elapsed, stepInfo, currentPace, prepareStart, type Session } from '../lib/recorder';
 import { calories, strideM } from '../lib/metrics';
 import { fmtDist, fmtInt, fmtP, fmtPace, fmtTime, unitL, unitWord } from '../lib/format';
 import { openDialog } from '../lib/dialogs';
@@ -59,11 +59,16 @@ function helpText(s: Session): string | null {
 }
 
 export function Record() {
-  const { session: s, pending } = useStore(rec);
+  const { session: s, pending, split } = useStore(rec);
   const { settings } = useStore(data);
   const [type, setType] = useState<ActivityType>('walk');
   const [indoor, setIndoor] = useState(false);
   const [starting, setStarting] = useState(false);
+  const onStart = () => {
+    void prepareStart();                       // permissions must be asked inside the tap itself
+    setStarting(true);
+    void start(type, indoor).finally(() => setStarting(false));
+  };
   const u = settings.units;
 
   if (!s) return (
@@ -80,7 +85,7 @@ export function Record() {
         <div className="relative grid aspect-square w-[min(100cqh,78cqw,300px)] place-items-center">
           <span aria-hidden="true" className="absolute inset-0 rounded-full border border-dashed border-line" />
           <span aria-hidden="true" className="absolute inset-[12%] rounded-full border border-line" />
-          <button disabled={!!pending || starting} onClick={async () => { setStarting(true); try { await start(type, indoor); } finally { setStarting(false); } }}
+          <button disabled={!!pending || starting} onClick={onStart}
             className="relative grid h-[62%] w-[62%] place-items-center rounded-full bg-cobalt text-on-cobalt shadow-[0_24px_50px_-18px_var(--cobalt),inset_0_2px_0_rgba(255,255,255,.18)] transition-transform active:scale-95 disabled:opacity-50">
             <span className="flex flex-col items-center gap-1">
               <IconPlay size={30} />
@@ -146,7 +151,17 @@ export function Record() {
       </div>
 
       {/* The map takes whatever height is left on this phone */}
-      <div className="mt-[clamp(8px,1.8dvh,16px)] min-h-0 flex-1">
+      <div className="relative mt-[clamp(8px,1.8dvh,16px)] min-h-0 flex-1">
+        {split && Date.now() - split.at < 4500 && (
+          <div key={split.at} className="split-card lift absolute inset-x-3 top-3 z-[600] flex items-center gap-3 rounded-[18px] px-4 py-3" role="status">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-mango text-[15px] font-black text-[#2A1B00] [font-stretch:115%]">{split.n}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-bold">{split.unit === 'mi' ? 'Mile' : 'Kilometer'} {split.n}</span>
+              <span className="block text-[13px] text-muted">Split time</span>
+            </span>
+            <span className="text-right"><span className="num block text-[22px]">{fmtTime(split.sec)}</span><span className="label">/{split.unit}</span></span>
+          </div>
+        )}
         {s.indoor ? (
           <div className="grid h-full place-items-center rounded-[20px] border border-dashed border-line px-6 text-center text-[13px] text-muted">Indoor mode: no map. Distance comes from your steps.</div>
         ) : s.points.length > 0 || (s.here && s.geo !== 'coarse') ? (
