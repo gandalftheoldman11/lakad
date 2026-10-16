@@ -20,11 +20,18 @@ export function Sheet({ open, onClose, children, label }: { open: boolean; onClo
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current; if (!d) return;
-    if (open && !d.open) d.showModal();
+    if (open && !d.open) {
+      d.showModal();
+      // Browsers focus (and scroll to) the first button; start at the top instead
+      d.focus({ preventScroll: true });
+      d.scrollTop = 0;
+    }
     if (!open && d.open) d.close();
   }, [open]);
+  // Moving from one sheet to another (e.g. activity → share) starts the new one at the top
+  useEffect(() => { if (ref.current) ref.current.scrollTop = 0; }, [label]);
   return (
-    <dialog ref={ref} className="sheet" aria-label={label} onCancel={e => { e.preventDefault(); onClose(); }}
+    <dialog ref={ref} className="sheet" aria-label={label} tabIndex={-1} onCancel={e => { e.preventDefault(); onClose(); }}
       onClick={e => { if (e.target === ref.current) onClose(); }}>
       {open && <div className="px-[22px] pt-4 pb-[22px]">{children}</div>}
     </dialog>
@@ -91,7 +98,7 @@ export function Segmented<T extends string>({ value, onChange, options, label }:
  * The goal path: Lakad's route line, filling from start toward your goal,
  * with the mango "you are here" dot at today's progress.
  */
-export function GoalPath({ value, max, label }: { value: number; max: number; label: string }) {
+export function GoalPath({ value, max, label, celebrate }: { value: number; max: number; label: string; celebrate?: boolean }) {
   const pct = max > 0 ? Math.min(1, value / max) : 0;
   const ref = useRef<SVGPathElement>(null);
   const [shown, setShown] = useState(0);              // animates once on first show
@@ -113,7 +120,11 @@ export function GoalPath({ value, max, label }: { value: number; max: number; la
       <circle cx="8" cy="62" r="5" fill="var(--surface)" stroke="var(--cobalt)" strokeWidth="3" />
       {!done && <circle cx="352" cy="22" r="7" fill="none" stroke="var(--muted)" strokeWidth="2" strokeDasharray="2 3" />}
       <circle cx={dot[0]} cy={dot[1]} r={done ? 11 : 9} fill="var(--mango)" opacity={0.25} />
-      <circle cx={dot[0]} cy={dot[1]} r={done ? 7 : 6} fill="var(--mango)" stroke="var(--surface)" strokeWidth="2.5" />
+      {celebrate && <>
+        <circle cx={dot[0]} cy={dot[1]} r={8} fill="none" stroke="var(--mango)" strokeWidth="2.5" className="goal-burst" />
+        <circle cx={dot[0]} cy={dot[1]} r={8} fill="none" stroke="var(--mango)" strokeWidth="2" className="goal-burst second" />
+      </>}
+      <circle cx={dot[0]} cy={dot[1]} r={done ? 7 : 6} fill="var(--mango)" stroke="var(--surface)" strokeWidth="2.5" className={celebrate ? 'goal-pop' : undefined} />
     </svg>
   );
 }
