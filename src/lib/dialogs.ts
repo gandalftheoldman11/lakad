@@ -8,7 +8,10 @@ export type DialogState =
   | { kind: 'day' }
   | { kind: 'settings' }
   | { kind: 'finish' }
-  | { kind: 'account' };
+  | { kind: 'account' }
+  | { kind: 'badges' }
+  | { kind: 'levelup'; level: number }
+  | { kind: 'plan' };
 
 export const dialogs = createStore<{ d: DialogState }>({ d: { kind: null } });
 export const openDialog = (d: DialogState) => dialogs.set({ d });

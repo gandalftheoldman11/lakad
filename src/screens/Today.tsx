@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { FitText } from '../components/FitText';
 import { buzz } from '../lib/alerts';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { useStore } from '../lib/store';
@@ -41,7 +42,7 @@ export function Today({ go }: { go: (t: 'record') => void }) {
 
       <section aria-label="Today's steps">
         <p className="m-0 mb-2 text-[15px] font-medium text-muted">{dateLine}</p>
-        <div className="num huge"><AnimatedNumber value={steps} format={fmtInt} duration={1100} countUpKey="today-steps" /></div>
+        <div className="num flex"><FitText text={fmtInt(steps)} className="text-[clamp(76px,25vw,136px)]"><AnimatedNumber value={steps} format={fmtInt} duration={1100} countUpKey="today-steps" /></FitText></div>
         <p className="mt-3 mb-0 text-[16px]">
           {steps >= g
             ? <span className={celebrate ? 'fade-up inline-block' : ''}><strong className="font-semibold">Goal reached.</strong> <span className="text-muted">{fmtInt(steps - g)} steps past {fmtInt(g)}.</span></span>

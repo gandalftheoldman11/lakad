@@ -50,6 +50,8 @@ export interface Session {
   brk: boolean;         // next point starts a new segment
   lastMoveAt: number;
   lastSplit: number;
+  /** planned route being followed, if any */
+  plan?: { coords: [number, number][]; target: number; goalHit?: boolean };
   /** moving seconds at the last km/mile split */
   lastSplitT?: number;
   elevGain: number | null;
@@ -59,7 +61,7 @@ export interface Session {
 
 const KEY = 'lakad.recording';
 export interface SplitEvent { n: number; sec: number; unit: 'km' | 'mi'; at: number }
-export const rec = createStore({ session: null as Session | null, pending: null as Session | null, now: Date.now(), split: null as SplitEvent | null });
+export const rec = createStore({ session: null as Session | null, pending: null as Session | null, now: Date.now(), split: null as SplitEvent | null, goalAt: 0 });
 
 let tracker: Tracker | null = null;
 let pedometer: Pedometer | null = null;
@@ -252,6 +254,13 @@ function flushTail(atMs = Date.now()) {
   else update({ tail: null });
 }
 function announceSplit(s: Session, distance: number, points: RoutePoint[], t: number, units: 'km' | 'mi', voice: boolean) {
+  // planned distance reached: say so once
+  if (s.plan && !s.plan.goalHit && distance >= s.plan.target) {
+    s.plan.goalHit = true;
+    rec.set({ goalAt: Date.now() });
+    void buzz();
+    if (voice) speak(`Goal reached. ${(s.plan.target / unitM(units)).toFixed(s.plan.target % unitM(units) ? 1 : 0)} ${unitWord(units, 2)} done. Great work.`);
+  }
   const n = Math.floor(distance / unitM(units));
   if (n <= s.lastSplit) return s.lastSplit;
   void buzz();
@@ -366,12 +375,12 @@ async function detach() {
   kf = null;
 }
 
-export async function start(type: ActivityType, indoor = false) {
+export async function start(type: ActivityType, indoor = false, plan?: { coords: [number, number][]; target: number }) {
   const now = Date.now();
   jumpRejects = []; lastRaw = null;
   const s = normalise({ type, indoor, startedAt: now, acc: 0, since: now, paused: false, auto: false, points: [], distance: 0,
-    geo: indoor ? 'off' : 'waiting', brk: false, lastMoveAt: now, lastSplit: 0, elevGain: null, altRef: null, altEma: null });
-  rec.set({ session: s, split: null });
+    geo: indoor ? 'off' : 'waiting', brk: false, lastMoveAt: now, lastSplit: 0, elevGain: null, altRef: null, altEma: null, ...(plan ? { plan: { ...plan } } : {}) });
+  rec.set({ session: s, split: null, goalAt: 0 });
   await attach(s);
   if (liveWanted()) void startLive(liveStats(rec.get().session ?? s));
   persist();

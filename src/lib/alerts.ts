@@ -7,6 +7,13 @@ export async function buzz() {
     else navigator.vibrate?.([250, 120, 250]);
   } catch { /* not supported */ }
 }
+/** One light tap of the vibration motor (badge taps, level-ups) */
+export async function tapFeel() {
+  try {
+    if (isNative) await Haptics.impact({ style: ImpactStyle.Light });
+    else navigator.vibrate?.(15);
+  } catch { /* not supported */ }
+}
 export function speak(text: string) {
   if (!('speechSynthesis' in window)) return;
   try { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } catch { /* not supported */ }

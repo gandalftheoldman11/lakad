@@ -8,6 +8,10 @@
     <meta name="description" content="Record, analyze and share your walks and runs." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <script>
+      // apply a chosen theme before the app draws, so it never flashes the other one
+      try { var l = JSON.parse(localStorage.getItem('lakad.look') || '{}'); if (l.t === 'light' || l.t === 'dark') document.documentElement.dataset.theme = l.t; if (l.a && l.a !== 'blue') document.documentElement.dataset.accent = l.a; } catch (e) {}
+    </script>
     <title>Lakad: walk and run tracker</title>
   </head>
   <body>

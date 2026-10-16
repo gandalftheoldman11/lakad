@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState } from 'react';
+import { Suspense, useState } from 'react';
+import { LoadGuard, useRetryableLazy } from '../components/LoadGuard';
 import { useStore } from '../lib/store';
 import { data, deleteActivity } from '../lib/data';
 import { account } from '../lib/account';
@@ -14,10 +15,10 @@ import { activityGpx } from '../lib/exporters';
 import { toast } from '../lib/ui';
 import { Actions, Button, SheetTitle } from '../components/ui';
 
-const RouteMap = lazy(() => import('../components/RouteMap'));
 const Stat = ({ v, l, big }: { v: string; l: string; big?: boolean }) => <div><span className={`num ${big ? 'big' : 'mid'} block`}>{v}</span><span className="text-sm text-muted">{l}</span></div>;
 
 export function Detail({ id }: { id: string }) {
+  const [RouteMap, retryMap] = useRetryableLazy(() => import('../components/RouteMap'));
   const { acts, settings } = useStore(data);
   const acc = useStore(account);
   const f = useStore(feed);
@@ -38,7 +39,7 @@ export function Detail({ id }: { id: string }) {
     <>
       <p className="m-0 text-sm text-muted">{dateLabel(a.start)} · {timeLabel(a.start)}</p>
       <SheetTitle>{shareTitle(a)}</SheetTitle>
-      {a.route.length > 1 && <Suspense fallback={<div className="mt-3.5 aspect-[4/3] rounded-[18px] bg-cobalt-soft" />}><RouteMap route={a.route} animate className="mt-3.5 aspect-[4/3]" /></Suspense>}
+      {a.route.length > 1 && <LoadGuard className="mt-3.5 aspect-[4/3]" onRetry={retryMap}><Suspense fallback={<div className="mt-3.5 aspect-[4/3] rounded-[18px] bg-cobalt-soft" />}><RouteMap route={a.route} animate className="mt-3.5 aspect-[4/3]" /></Suspense></LoadGuard>}
       <div className="my-[18px] grid grid-cols-2 gap-3">
         <Stat big v={fmtDist(a.distance, u)} l={`${unitL(u)}${a.indoor ? ' (indoor, from steps)' : a.distanceEdited ? ' (edited)' : ''}`} />
         <Stat big v={fmtTime(a.duration)} l="moving time" />
@@ -74,9 +75,9 @@ export function Detail({ id }: { id: string }) {
       </Actions>
       {acc.enabled && (
         <div className="mt-2.5">
-          {!me ? <Button className="w-full" onClick={() => openDialog({ kind: 'account' })}>Sign in to post to the feed</Button>
-            : posted ? <Button className="w-full" disabled={!!busy} onClick={() => run('unpost', async () => { await removePostFor(a.id); toast('Removed from the feed'); })}>Remove from feed</Button>
-            : <Button className="w-full" disabled={!!busy} onClick={() => run('post', async () => { try { await postActivity(a); toast('Posted to the feed'); } catch { toast("Couldn't post. Check your connection."); } })}>{busy === 'post' ? 'Posting…' : 'Post to feed'}</Button>}
+          {!me ? <Button className="w-full" onClick={() => openDialog({ kind: 'account' })}>Sign in to share with friends</Button>
+            : posted ? <Button className="w-full" disabled={!!busy} onClick={() => run('unpost', async () => { await removePostFor(a.id); toast('No longer shared'); })}>Stop sharing with friends</Button>
+            : <Button className="w-full" disabled={!!busy} onClick={() => run('post', async () => { try { await postActivity(a); toast('Shared with your friends'); } catch { toast("Couldn't share. Check your connection."); } })}>{busy === 'post' ? 'Sharing…' : 'Share with friends'}</Button>}
         </div>
       )}
       <Actions>

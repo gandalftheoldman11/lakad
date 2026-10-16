@@ -9,13 +9,20 @@ import { unitL, unitWord, ymd } from '../lib/format';
 import { strideFromHeight } from '../lib/metrics';
 import { isIOSApp, isNative } from '../lib/platform';
 import { toast } from '../lib/ui';
-import { Actions, Button, ErrorText, Field, SheetTitle } from '../components/ui';
-import type { Units } from '../types';
+import { Actions, Button, ErrorText, Field, LinkButton, Segmented, SheetTitle } from '../components/ui';
+import { offline, saveAreaAround, deleteArea, AREA_RADIUS } from '../lib/offlineArea';
+import { ago } from '../lib/format';
+import type { Settings as SettingsT, Units } from '../types';
 
 function Toggle({ label, checked, set }: { label: string; checked: boolean; set: (v: boolean) => void }) {
   return <label className="mt-3.5 flex items-center justify-between gap-3"><span>{label}</span><input type="checkbox" role="switch" checked={checked} onChange={e => set(e.target.checked)} /></label>;
 }
 const Sec = ({ title, sub }: { title: string; sub?: string }) => <><h4 className="m-0 text-base font-bold">{title}</h4>{sub && <p className="m-0 mt-1 text-sm text-muted">{sub}</p>}</>;
+
+const ACCENTS: [SettingsT['accent'], string, string, string][] = [
+  ['blue', 'Blue', '#1F4FE0', '#6E8FFF'], ['green', 'Green', '#0B7A51', '#3FD49A'],
+  ['purple', 'Purple', '#6A3DDB', '#A88DFF'], ['coral', 'Coral', '#BF3A25', '#FF7C66']
+];
 
 export function SettingsDialog() {
   const { settings: s, all, acts, days } = useStore(data);
@@ -79,6 +86,33 @@ export function SettingsDialog() {
   return (
     <>
       <SheetTitle>Settings</SheetTitle>
+
+      <div className="mt-5"><Sec title="Appearance" /></div>
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <span className="text-[15px]">Theme</span>
+        <Segmented value={s.theme ?? 'system'} label="Theme" onChange={v => void saveSettings({ theme: v })}
+          options={[['system', 'System'], ['light', 'Light'], ['dark', 'Dark']]} />
+      </div>
+      <div className="mt-4">
+        <span className="text-[15px]">Accent color</span>
+        <div className="mt-2.5 grid grid-cols-4 gap-2" role="radiogroup" aria-label="Accent color">
+          {ACCENTS.map(([k, label, light, dark]) => {
+            const on = (s.accent ?? 'blue') === k;
+            return (
+              <button key={k} role="radio" aria-checked={on} onClick={() => void saveSettings({ accent: k })}
+                className={`flex flex-col items-center gap-1.5 rounded-[16px] py-2.5 text-[13px] font-semibold transition-colors ${on ? 'bg-surface-2 text-ink ring-2 ring-[var(--cobalt)]' : 'text-muted'}`}>
+                <span className="relative h-8 w-8 rounded-full" style={{ background: `linear-gradient(135deg, ${light} 50%, ${dark} 50%)` }}>
+                  <span className="absolute right-0 bottom-0 h-2.5 w-2.5 rounded-full bg-mango ring-2 ring-surface" />
+                </span>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="m-0 mt-2 text-[13px] text-muted">Changes buttons, charts, routes and the goal path. Applies right away.</p>
+      </div>
+      <div className="mt-[22px] border-t border-line" />
+
       <div className="grid grid-cols-2 gap-3">
         <Field label="Daily step goal" id="sGoal"><input id="sGoal" type="number" inputMode="numeric" min="100" step="500" value={goal} onChange={e => setGoal(e.target.value)} /></Field>
         <Field label={`Weekly goal (${unitL(units)})`} id="sWeek"><input id="sWeek" type="number" inputMode="decimal" min="0" step="1" placeholder="Off" value={week} onChange={e => setWeek(e.target.value)} /></Field>
@@ -112,8 +146,10 @@ export function SettingsDialog() {
         {isNative && <Toggle label={isIOSApp ? 'Live stats on the lock screen and Dynamic Island' : 'Live stats on the lock screen'} checked={lockScreen} set={setLockScreen} />}
       </div>
 
+      <OfflineMaps />
+
       <div className="mt-[22px] border-t border-line pt-[18px]">
-        <Sec title="Privacy zone" sub="Hides where your routes start and end, often your home, in share images, GPX exports and feed posts. Your own maps in Lakad always show the full route." />
+        <Sec title="Privacy zone" sub="Hides where your routes start and end, often your home, in share images, GPX exports and posts to friends. Your own maps in Lakad always show the full route." />
         <Field label="Hide the start and end of shared routes" id="sPriv">
           <select id="sPriv" value={privacyTrim} onChange={e => setPrivacyTrim(e.target.value)}>
             <option value="0">Off</option><option value="100">100 m</option><option value="200">200 m (recommended)</option><option value="500">500 m</option>
@@ -134,5 +170,38 @@ export function SettingsDialog() {
       <Actions><Button variant="primary" onClick={save}>Save settings</Button><Button onClick={closeDialog}>Cancel</Button></Actions>
       <p className="m-0 mt-4 text-center text-xs text-muted">Map data © OpenStreetMap contributors</p>
     </>
+  );
+}
+
+/** Settings › Offline maps: save the streets around you so route planning works without internet */
+function OfflineMaps() {
+  const off = useStore(offline);
+  const [msg, setMsg] = useState('');
+  const save = () => {
+    setMsg('Finding your location…');
+    if (!navigator.geolocation) { setMsg('Location isn’t available on this device.'); return; }
+    navigator.geolocation.getCurrentPosition(
+      p => { setMsg(''); void saveAreaAround([p.coords.latitude, p.coords.longitude]).then(() => toast('Area saved for offline use')).catch(() => {}); },
+      () => setMsg('Couldn’t get your location. Allow location for Lakad, then try again.'),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+  };
+  const a = off.area;
+  return (
+    <div className="mt-[22px] border-t border-line pt-[18px]">
+      <Sec title="Offline maps" sub={`Save the streets and paths within ${AREA_RADIUS / 1000} km of you. Route planning then works without internet there, and maps show your saved streets when offline.`} />
+      {a ? (
+        <div className="mt-3 rounded-[16px] bg-surface-2 px-4 py-3 text-[14px]">
+          <strong className="block">Area saved</strong>
+          <span className="text-muted">{a.ways.length.toLocaleString()} streets and paths · about {Math.max(1, Math.round(a.bytes / 1048576 * 10) / 10)} MB · saved {ago(a.savedAt)}</span>
+          <div className="mt-2 flex gap-4">
+            <LinkButton className="text-[14px]" disabled={off.saving || !off.online} onClick={save}>{off.saving ? off.progress || 'Saving…' : 'Update to where I am'}</LinkButton>
+            <LinkButton danger className="text-[14px]" onClick={() => void deleteArea()}>Delete</LinkButton>
+          </div>
+        </div>
+      ) : (
+        <Button className="mt-3 w-full" disabled={off.saving || !off.online} onClick={save}>{off.saving ? off.progress || 'Saving…' : off.online ? 'Save the area around me' : 'Connect to the internet to save an area'}</Button>
+      )}
+      {(msg || off.error) && <p className="m-0 mt-2 text-[13px] text-danger">{msg || off.error}</p>}
+    </div>
   );
 }

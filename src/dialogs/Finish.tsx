@@ -50,7 +50,7 @@ export function Finish({ onSaved }: { onSaved: () => void }) {
     closeDialog();
     if (a) {
       toast(`${a.type === 'run' ? 'Run' : 'Walk'} saved`);
-      if (post) postActivity(a).then(() => toast('Posted to the feed')).catch(() => toast("Saved, but couldn't post. Try from the activity later."));
+      if (post) postActivity(a).then(() => toast('Shared with your friends')).catch(() => toast("Saved, but couldn't share. Try again from the activity."));
     }
     onSaved();
   }
@@ -83,7 +83,7 @@ export function Finish({ onSaved }: { onSaved: () => void }) {
       {acc.enabled && acc.session && (
         <label className="mt-4 flex items-start gap-2.5">
           <input type="checkbox" className="mt-0.5 h-5 w-5 accent-cobalt" checked={post} onChange={e => setPost(e.target.checked)} />
-          <span>Post to the feed<br /><span className="text-sm text-muted">Shares distance, time, steps, note and route shape. No map location.</span></span>
+          <span>Share with friends<br /><span className="text-sm text-muted">Only your friends see it: distance, time, steps, note and route shape. No map location.</span></span>
         </label>
       )}
       <ErrorText>{err}</ErrorText>

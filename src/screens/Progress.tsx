@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { FitText } from '../components/FitText';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { useStore } from '../lib/store';
 import { data } from '../lib/data';
@@ -6,6 +7,7 @@ import { stepsBetween, stepsByDay, sumWhere } from '../lib/metrics';
 import { addDays, dateLabel, fmtDist, fmtDur, fmtInt, fmtPace, sod, unitL, unitM, weekStart } from '../lib/format';
 import { openDialog } from '../lib/dialogs';
 import { TopBar } from '../components/TopBar';
+import { MyBadgeCard } from '../components/MyBadgeCard';
 import { PaceTrend, WeeklyDistance } from '../components/charts';
 import { Calendar } from '../components/Calendar';
 import { ActivityList } from '../components/ActivityList';
@@ -52,7 +54,7 @@ export function Progress({ go }: { go: (t: 'record') => void }) {
       <Segmented value={period} onChange={setPeriod} label="Period" options={[['week', 'This week'], ['month', 'This month'], ['all', 'All time']]} />
 
       <section className="mt-6" aria-label="Totals">
-        <div className="flex items-baseline gap-2"><span className="num text-[clamp(60px,19vw,112px)]"><AnimatedNumber value={t.dist} format={n => fmtDist(n, u)} duration={800} /></span><span className="num text-[26px] text-muted">{unitL(u)}</span></div>
+        <div className="flex items-baseline gap-2"><FitText text={fmtDist(t.dist, u)} className="num text-[clamp(60px,19vw,112px)]"><AnimatedNumber value={t.dist} format={n => fmtDist(n, u)} duration={800} /></FitText><span className="num shrink-0 text-[26px] text-muted">{unitL(u)}</span></div>
         <p className="m-0 mt-2 text-[15px] text-muted">{t.count} {t.count === 1 ? 'activity' : 'activities'} {periodLabel} · {fmtDur(t.dur)} moving</p>
         <div className="mt-4 grid grid-cols-3 gap-x-3 border-y border-line">
           <Stat v={<AnimatedNumber value={steps} format={fmtInt} duration={800} />} l="steps" />
@@ -61,6 +63,8 @@ export function Progress({ go }: { go: (t: 'record') => void }) {
         </div>
         {!settings.weight && <p className="m-0 mt-2 text-[13px] text-muted">Add your weight in settings to see calories.</p>}
       </section>
+
+      <section className="mt-6"><MyBadgeCard /></section>
 
       <section className="mt-8"><SectionTitle>Step goal calendar</SectionTitle><Panel><Calendar map={map} goal={settings.goal} /></Panel></section>
       <section className="mt-8"><SectionTitle>Distance per week</SectionTitle><Panel><WeeklyDistance acts={acts} units={u} weekGoal={settings.weekGoal} /></Panel></section>

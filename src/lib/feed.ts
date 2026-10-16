@@ -10,23 +10,32 @@ export const feed = createStore({
   loaded: false,
   error: '' as string,
   posts: [] as FeedPost[],
-  cheers: new Map<string, Set<string>>()   // post id -> user ids
+  cheers: new Map<string, Set<string>>(),   // post id -> user ids
+  /** set when showing the copy saved last time (offline) */
+  savedAt: 0
 });
+
+/** keep a copy of the last feed so it still shows offline */
+const snapKey = () => `lakad.feed.${account.get().session?.user.id ?? ''}`;
 
 export async function loadFeed() {
   if (!supabase || !account.get().session) return;
+  // show the copy from last time straight away (instant, and all you get offline), then refresh it
+  if (!feed.get().posts.length) restoreFeed();
+  if (!navigator.onLine) { feed.set({ loaded: true, error: feed.get().posts.length ? '' : "You're offline. The feed loads when you reconnect." }); return; }
   feed.set({ loading: true, error: '' });
   try {
     const { data, error } = await supabase
       .from('posts')
-      .select('id,user_id,act_id,type,distance,duration,steps,elev_gain,note,shape,start,created_at,profiles(display_name)')
+      .select('id,user_id,act_id,type,distance,duration,steps,elev_gain,note,shape,start,created_at,profiles(display_name,badge_level)')
       .order('created_at', { ascending: false })
       .limit(150);
     if (error) throw error;
     const posts: FeedPost[] = (data || []).map((r: Record<string, unknown>) => {
-      const prof = r.profiles as { display_name: string | null } | { display_name: string | null }[] | null;
+      type Prof = { display_name: string | null; badge_level?: number | null };
+      const prof = r.profiles as Prof | Prof[] | null;
       const p = Array.isArray(prof) ? prof[0] : prof;
-      return { ...(r as unknown as FeedPost), display_name: p?.display_name ?? null };
+      return { ...(r as unknown as FeedPost), display_name: p?.display_name ?? null, badge_level: p?.badge_level ?? null };
     });
     const cheers = new Map<string, Set<string>>();
     if (posts.length) {
@@ -34,13 +43,22 @@ export async function loadFeed() {
       if (ce) throw ce;
       for (const r of c || []) { if (!cheers.has(r.post_id)) cheers.set(r.post_id, new Set()); cheers.get(r.post_id)!.add(r.user_id); }
     }
-    feed.set({ posts, cheers, loaded: true });
+    feed.set({ posts, cheers, loaded: true, savedAt: 0, error: '' });
+    try { localStorage.setItem(snapKey(), JSON.stringify({ at: Date.now(), posts, cheers: [...cheers].map(([k, v]) => [k, [...v]]) })); } catch { /* storage full */ }
   } catch (e) {
+    if (!feed.get().posts.length) restoreFeed();
     feed.set({ error: navigator.onLine ? "Couldn't load the feed." : "You're offline. The feed loads when you reconnect.", loaded: true });
     console.warn(e);
   } finally {
     feed.set({ loading: false });
   }
+}
+
+function restoreFeed() {
+  try {
+    const snap = JSON.parse(localStorage.getItem(snapKey()) || 'null') as { at: number; posts: FeedPost[]; cheers: [string, string[]][] } | null;
+    if (snap) feed.set({ posts: snap.posts, cheers: new Map(snap.cheers.map(([k, v]) => [k, new Set(v)])), savedAt: snap.at, loaded: true });
+  } catch { /* bad copy */ }
 }
 
 const uid = () => account.get().session?.user.id;

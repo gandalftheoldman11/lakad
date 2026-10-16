@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useStore } from '../lib/store';
-import { account, sendCode, setDisplayName, signOut, verifyCode } from '../lib/account';
+import { account, setDisplayName, signIn, signOut, signUp } from '../lib/account';
 import { syncNow } from '../lib/sync';
 import { closeDialog } from '../lib/dialogs';
 import { toast } from '../lib/ui';
-import { Actions, Button, ErrorText, Field, SheetTitle } from '../components/ui';
+import { Actions, Button, ErrorText, Field, Segmented, SheetTitle } from '../components/ui';
 
 export function AccountDialog() {
   const acc = useStore(account);
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [stage, setStage] = useState<'email' | 'code'>('email');
+  const [password, setPassword] = useState('');
+  const [show, setShow] = useState(false);
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [name, setName] = useState(acc.displayName);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -19,7 +20,7 @@ export function AccountDialog() {
   if (acc.session) return (
     <>
       <SheetTitle sub={acc.session.user.email}>Your account</SheetTitle>
-      <Field label="Display name (shown on the feed)" id="aName"><input id="aName" maxLength={40} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Mill" /></Field>
+      <Field label="Your name (shown to your friends)" id="aName"><input id="aName" maxLength={40} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Mill" /></Field>
       <p className="m-0 mt-3 text-sm text-muted">
         {acc.syncing ? 'Syncing…' : acc.syncError || (acc.lastSync ? `Synced at ${new Date(acc.lastSync).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}.` : 'Not synced yet.')}
       </p>
@@ -32,29 +33,33 @@ export function AccountDialog() {
     </>
   );
 
+  const okEmail = /.+@.+\..+/.test(email.trim()), okPass = password.length >= 8;
+  const go = () => run(async () => {
+    if (mode === 'signup') { await signUp(email, password); toast('Account created. You’re signed in.'); }
+    else { await signIn(email, password); toast('Signed in'); }
+    closeDialog();
+  });
   return (
     <>
-      <SheetTitle sub="Sign in to back up your activities, use Lakad on more than one device, and join the feed. No password needed.">Sign in</SheetTitle>
-      {stage === 'email' ? (
-        <>
-          <Field label="Email" id="aEmail"><input id="aEmail" type="email" autoComplete="email" inputMode="email" value={email} onChange={e => setEmail(e.target.value)} /></Field>
-          <ErrorText>{err}</ErrorText>
-          <Actions>
-            <Button variant="primary" disabled={busy || !/.+@.+\..+/.test(email)} onClick={() => run(async () => { await sendCode(email); setStage('code'); })}>{busy ? 'Sending…' : 'Email me a code'}</Button>
-            <Button onClick={closeDialog}>Cancel</Button>
-          </Actions>
-        </>
-      ) : (
-        <>
-          <p className="m-0 mt-3">We sent a code to <strong>{email}</strong>. It can take a minute to arrive.</p>
-          <Field label="Code" id="aCode"><input id="aCode" inputMode="numeric" autoComplete="one-time-code" maxLength={10} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} /></Field>
-          <ErrorText>{err}</ErrorText>
-          <Actions>
-            <Button variant="primary" disabled={busy || code.length < 6} onClick={() => run(async () => { await verifyCode(email, code); toast('Signed in'); closeDialog(); })}>{busy ? 'Checking…' : 'Sign in'}</Button>
-            <Button disabled={busy} onClick={() => { setStage('email'); setCode(''); }}>Use another email</Button>
-          </Actions>
-        </>
-      )}
+      <SheetTitle sub="Back up your activities, use Lakad on more than one phone, and add friends.">{mode === 'signup' ? 'Create your account' : 'Sign in'}</SheetTitle>
+      <div className="mt-4 flex justify-center">
+        <Segmented value={mode} onChange={m => { setMode(m); setErr(''); }} label="Sign in or create an account" options={[['signin', 'Sign in'], ['signup', 'Create account']]} />
+      </div>
+      <form onSubmit={e => { e.preventDefault(); if (okEmail && okPass && !busy) void go(); }}>
+        <Field label="Email" id="aEmail"><input id="aEmail" type="email" autoComplete="email" inputMode="email" autoCapitalize="off" value={email} onChange={e => setEmail(e.target.value)} /></Field>
+        <Field label={mode === 'signup' ? 'Choose a password (8+ characters)' : 'Password'} id="aPass">
+          <div className="relative">
+            <input id="aPass" type={show ? 'text' : 'password'} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={e => setPassword(e.target.value)} className="pr-16" />
+            <button type="button" onClick={() => setShow(v => !v)} className="absolute top-1/2 right-3 -translate-y-1/2 text-[14px] font-semibold text-cobalt" aria-pressed={show}>{show ? 'Hide' : 'Show'}</button>
+          </div>
+        </Field>
+        {mode === 'signup' && <p className="m-0 mt-2 text-[13px] text-muted">Use an email you’ll remember: it’s how you sign in on a new phone. Friends only ever see your name, not your email.</p>}
+        <ErrorText>{err}</ErrorText>
+        <Actions>
+          <Button type="submit" variant="primary" disabled={busy || !okEmail || !okPass}>{busy ? (mode === 'signup' ? 'Creating…' : 'Signing in…') : mode === 'signup' ? 'Create account' : 'Sign in'}</Button>
+          <Button type="button" onClick={closeDialog}>Cancel</Button>
+        </Actions>
+      </form>
     </>
   );
 }

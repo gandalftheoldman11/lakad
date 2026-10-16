@@ -12,6 +12,9 @@ import { Progress } from './screens/Progress';
 import { Feed } from './screens/Feed';
 import { Detail } from './dialogs/Detail';
 import { ShareSheet } from './dialogs/ShareSheet';
+import { BadgesSheet, LevelUp } from './dialogs/Badges';
+import { PlanRoute } from './dialogs/PlanRoute';
+import { useBadgeKeeper } from './lib/myBadge';
 import { Onboarding } from './components/Onboarding';
 import { saveSettings } from './lib/data';
 import { ActivityForm } from './dialogs/ActivityForm';
@@ -37,8 +40,11 @@ function NavItem({ label, active, onClick, children }: { label: string; active: 
 export default function App() {
   const [tab, setTab] = useState<Tab>(() => (rec.get().session ? 'record' : 'today'));
   const { ready, settings, acts } = useStore(data);
+  useBadgeKeeper();
   // People who already use Lakad (activities or body details saved) skip the first-time setup
-  const existingUser = acts.length > 0 || settings.height > 0 || settings.updatedAt > 0;
+  const { days } = useStore(data);
+  // steps read automatically from the phone don't mean someone has used Lakad before
+  const existingUser = acts.length > 0 || settings.height > 0 || Object.values(days).some(d => !d.auto);
   useEffect(() => { if (ready && !settings.onboarded && existingUser) void saveSettings({ onboarded: true }); }, [ready, settings.onboarded, existingUser]);
   const showOnboarding = ready && !settings.onboarded && !existingUser;
   const recording = useSel(rec, s => !!s.session);
@@ -95,7 +101,7 @@ export default function App() {
               {recording && <span className="dot-live absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-mango ring-2 ring-bg" />}
             </button>
           </div>
-          <NavItem label="Feed" active={tab === 'feed'} onClick={() => go('feed')}><IconFeed /></NavItem>
+          <NavItem label="Friends" active={tab === 'feed'} onClick={() => go('feed')}><IconFeed /></NavItem>
           <NavItem label="Settings" active={false} onClick={() => openDialog({ kind: 'settings' })}><IconGear /></NavItem>
         </div>
       </nav>
@@ -103,6 +109,9 @@ export default function App() {
       <Sheet open={!!d.kind} onClose={closeDialog} label={d.kind || 'dialog'}>
         {d.kind === 'detail' && <Detail id={d.id} />}
         {d.kind === 'share' && <ShareSheet id={d.id} />}
+        {d.kind === 'badges' && <BadgesSheet />}
+        {d.kind === 'levelup' && <LevelUp level={d.level} />}
+        {d.kind === 'plan' && <PlanRoute />}
         {d.kind === 'form' && <ActivityForm id={d.id} />}
         {d.kind === 'day' && <DaySteps />}
         {d.kind === 'finish' && <Finish onSaved={() => go('today')} />}

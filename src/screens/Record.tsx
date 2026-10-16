@@ -1,4 +1,6 @@
-import { lazy, Suspense, useState } from 'react';
+import { Suspense, useState } from 'react';
+import { LoadGuard, useRetryableLazy } from '../components/LoadGuard';
+import { FitText } from '../components/FitText';
 import { AnimatedNumber } from '../components/AnimatedNumber';
 import { useStore } from '../lib/store';
 import { data } from '../lib/data';
@@ -11,10 +13,11 @@ import { isAndroidApp, isIOS, isIOSApp, isNative } from '../lib/platform';
 import { TopBar } from '../components/TopBar';
 import { PendingBanner } from '../components/PendingBanner';
 import { LinkButton, Pill, Segmented } from '../components/ui';
+import { plans, selectPlan } from '../lib/plans';
+import { pointAt } from '../lib/planner';
 import { IconPause, IconPlay, IconRun, IconStop, IconWalk } from '../components/icons';
 import type { ActivityType } from '../types';
 
-const RouteMap = lazy(() => import('../components/RouteMap'));
 const Stat = ({ v, l }: { v: React.ReactNode; l: string }) => <div className="min-w-0 px-3 py-[clamp(6px,1.4dvh,12px)]"><span className="num block truncate text-[clamp(17px,2.8dvh,22px)]">{v}</span><span className="label block truncate">{l}</span></div>;
 type Tone = 'ok' | 'warn' | 'bad';
 
@@ -59,7 +62,9 @@ function helpText(s: Session): string | null {
 }
 
 export function Record() {
-  const { session: s, pending, split } = useStore(rec);
+  const [RouteMap, retryMap] = useRetryableLazy(() => import('../components/RouteMap'));
+  const { session: s, pending, split, goalAt } = useStore(rec);
+  const { selected: plan } = useStore(plans);
   const { settings } = useStore(data);
   const [type, setType] = useState<ActivityType>('walk');
   const [indoor, setIndoor] = useState(false);
@@ -67,7 +72,9 @@ export function Record() {
   const onStart = () => {
     void prepareStart();                       // permissions must be asked inside the tap itself
     setStarting(true);
-    void start(type, indoor).finally(() => setStarting(false));
+    const follow = plan && !indoor ? { coords: plan.coords, target: plan.target } : undefined;
+    void start(type, indoor, follow).finally(() => setStarting(false));
+    if (follow) selectPlan(null);
   };
   const u = settings.units;
 
@@ -96,6 +103,19 @@ export function Record() {
         </div>
       </div>
 
+      {!pending && !indoor && (plan ? (
+        <div className="lift mb-3 flex shrink-0 items-center gap-3 rounded-[18px] px-4 py-2.5">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-mango text-[16px]" aria-hidden="true">🏁</span>
+          <span className="min-w-0 flex-1"><strong className="block text-[15px]">{fmtDist(plan.target, u)} {unitL(u)} {plan.kind === 'loop' ? 'loop' : 'route'} planned</strong>
+            <span className="block text-[12px] text-muted">Route is {fmtDist(plan.distance, u)} {unitL(u)} · shown on the map while you walk</span></span>
+          <LinkButton className="text-[14px]" onClick={() => openDialog({ kind: 'plan' })}>Change</LinkButton>
+          <button className="px-1 text-[18px] text-muted" aria-label="Remove planned route" onClick={() => selectPlan(null)}>×</button>
+        </div>
+      ) : (
+        <div className="mb-2 flex shrink-0 justify-center">
+          <LinkButton className="text-[15px]" onClick={() => openDialog({ kind: 'plan' })}>Plan a route to a set distance</LinkButton>
+        </div>
+      ))}
       <p className="m-0 text-center text-[14px] text-muted">
         {pending ? 'Resume, save or discard your unfinished activity first.'
           : `${indoor ? (type === 'run' ? 'Indoor run' : 'Indoor walk') : (type === 'run' ? 'Run' : 'Walk')}. ${isNative ? 'Recording continues with the screen off.' : 'Keep this screen open while you move.'}`}
@@ -132,9 +152,15 @@ export function Record() {
       )}
 
       <div className="mt-[clamp(6px,1.5dvh,16px)] flex shrink-0 items-baseline gap-2">
-        <span className="num text-[clamp(52px,min(24vw,11dvh),128px)]" aria-live="off"><AnimatedNumber id="live-distance" value={s.distance} format={n => fmtDist(n, u)} duration={800} /></span>
-        <span className="num text-[clamp(20px,3.2dvh,28px)] text-muted">{unitL(u)}</span>
+        <FitText text={fmtDist(s.distance, u)} className="num text-[clamp(52px,min(24vw,11dvh),128px)]"><AnimatedNumber id="live-distance" value={s.distance} format={n => fmtDist(n, u)} duration={800} /></FitText>
+        <span className="num shrink-0 text-[clamp(20px,3.2dvh,28px)] text-muted">{unitL(u)}</span>
       </div>
+      {s.plan && (
+        <div className="mt-1 shrink-0">
+          <div className="h-1.5 overflow-hidden rounded-full bg-bar-soft"><div className="h-full rounded-full bg-mango transition-[width] duration-700" style={{ width: `${Math.min(100, (s.distance / s.plan.target) * 100)}%` }} /></div>
+          <p className="m-0 mt-1 text-[13px] font-semibold">{s.distance >= s.plan.target ? `Goal reached: ${fmtDist(s.plan.target, u)} ${unitL(u)} ✓` : `${fmtDist(s.plan.target - s.distance, u)} ${unitL(u)} to your ${fmtDist(s.plan.target, u)} ${unitL(u)} goal`}</p>
+        </div>
+      )}
       <p className="m-0 mt-1 shrink-0 text-[13px] text-muted">{s.indoor ? 'Distance from your steps' : `${s.type === 'run' ? 'Run' : 'Walk'} started at ${new Date(s.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`}</p>
 
       <div className="lift mt-[clamp(8px,1.8dvh,18px)] shrink-0 overflow-hidden rounded-[20px]">
@@ -152,6 +178,12 @@ export function Record() {
 
       {/* The map takes whatever height is left on this phone */}
       <div className="relative mt-[clamp(8px,1.8dvh,16px)] min-h-0 flex-1">
+        {goalAt > 0 && Date.now() - goalAt < 6000 && (
+          <div key={`g${goalAt}`} className="split-card absolute inset-x-3 top-3 z-[610] flex items-center gap-3 rounded-[18px] bg-mango px-4 py-3 text-[#2A1B00] shadow-[var(--lift)]" role="status">
+            <span className="text-[24px]" aria-hidden="true">🏁</span>
+            <span className="min-w-0 flex-1"><span className="block text-[16px] font-black">Goal reached!</span><span className="block text-[13px] opacity-80">{fmtDist(s.plan?.target ?? s.distance, u)} {unitL(u)} done. Keep going or finish.</span></span>
+          </div>
+        )}
         {split && Date.now() - split.at < 4500 && (
           <div key={split.at} className="split-card lift absolute inset-x-3 top-3 z-[600] flex items-center gap-3 rounded-[18px] px-4 py-3" role="status">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-mango text-[15px] font-black text-[#2A1B00] [font-stretch:115%]">{split.n}</span>
@@ -165,9 +197,9 @@ export function Record() {
         {s.indoor ? (
           <div className="grid h-full place-items-center rounded-[20px] border border-dashed border-line px-6 text-center text-[13px] text-muted">Indoor mode: no map. Distance comes from your steps.</div>
         ) : s.points.length > 0 || (s.here && s.geo !== 'coarse') ? (
-          <Suspense fallback={<div className="h-full rounded-[20px] bg-cobalt-soft" />}>
-            <RouteMap route={s.points} here={s.here} follow className="h-full rounded-[20px]" />
-          </Suspense>
+          <LoadGuard className="h-full" onRetry={retryMap}><Suspense fallback={<div className="h-full rounded-[20px] bg-cobalt-soft" />}>
+            <RouteMap route={s.points} here={s.here} follow className="h-full rounded-[20px]" plan={s.plan?.coords} goal={s.plan && !s.plan.goalHit ? pointAt(s.plan.coords, s.plan.target) : null} />
+          </Suspense></LoadGuard>
         ) : (
           <div className="lift grid h-full place-items-center rounded-[20px] p-5 text-center text-[13px] text-muted">
             {s.geo === 'blocked' ? 'No route without location. Time and steps still record.'

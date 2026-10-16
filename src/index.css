@@ -12,8 +12,9 @@
   --lift: 0 1px 0 rgba(14,27,51,0.04), 0 18px 40px -24px rgba(14,27,51,0.28);
   color-scheme: light;
 }
+/* Dark: follows the phone unless a theme is chosen in Settings › Appearance */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #070E1C; --surface: #0F182B; --surface-2: #152036; --ink: #EEF2F9; --muted: #8D9AB2; --line: #1C2840;
     --cobalt: #6E8FFF; --cobalt-soft: #18264A; --mango: #FFC24D; --mango-soft: #33280F;
     --bar-soft: #253250; --danger: #FF7A6E; --ok: #4CC789; --on-cobalt: #070E1C;
@@ -22,6 +23,27 @@
     color-scheme: dark;
   }
 }
+:root[data-theme="dark"] {
+  --bg: #070E1C; --surface: #0F182B; --surface-2: #152036; --ink: #EEF2F9; --muted: #8D9AB2; --line: #1C2840;
+  --cobalt: #6E8FFF; --cobalt-soft: #18264A; --mango: #FFC24D; --mango-soft: #33280F;
+  --bar-soft: #253250; --danger: #FF7A6E; --ok: #4CC789; --on-cobalt: #070E1C;
+  --nav: rgba(15,24,43,0.82);
+  --lift: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 40px -24px rgba(0,0,0,0.6);
+  color-scheme: dark;
+}
+
+/* Accent colours (the yellow dot stays the same). Each has a light and a dark version. */
+:root[data-accent="green"]  { --cobalt: #0B7A51; --cobalt-soft: #D6F1E5; }
+:root[data-accent="purple"] { --cobalt: #6A3DDB; --cobalt-soft: #E8E0FF; }
+:root[data-accent="coral"]  { --cobalt: #BF3A25; --cobalt-soft: #FDE1DA; }
+@media (prefers-color-scheme: dark) {
+  :root[data-accent="green"]:not([data-theme="light"])  { --cobalt: #3FD49A; --cobalt-soft: #10342A; }
+  :root[data-accent="purple"]:not([data-theme="light"]) { --cobalt: #A88DFF; --cobalt-soft: #251B47; }
+  :root[data-accent="coral"]:not([data-theme="light"])  { --cobalt: #FF7C66; --cobalt-soft: #3D1912; }
+}
+:root[data-theme="dark"][data-accent="green"]  { --cobalt: #3FD49A; --cobalt-soft: #10342A; }
+:root[data-theme="dark"][data-accent="purple"] { --cobalt: #A88DFF; --cobalt-soft: #251B47; }
+:root[data-theme="dark"][data-accent="coral"]  { --cobalt: #FF7C66; --cobalt-soft: #3D1912; }
 
 @theme inline {
   --color-bg: var(--bg);
@@ -132,4 +154,63 @@ input[type="checkbox"][role="switch"]:checked::after { transform: translateX(20p
 @media (prefers-reduced-motion: reduce) {
   .goal-burst, .goal-pop, .fade-up, .split-card, .route-end { animation: none !important; }
   .goal-burst { display: none; }
+}
+
+/* ---------- Level badges (components/Badge.tsx) ---------- */
+.bdg-on .bdg-twinkle { transform-box: fill-box; transform-origin: center; animation: bdg-twinkle 2.4s ease-in-out infinite; }
+@keyframes bdg-twinkle { 0%, 100% { opacity: .2; scale: .55; } 50% { opacity: 1; scale: 1.2; } }
+.bdg-on .bdg-sweep { animation: bdg-sweep 3.4s cubic-bezier(.4,0,.2,1) infinite; }
+@keyframes bdg-sweep { 0% { translate: -20px 0; opacity: 0; } 12% { opacity: 1; } 42% { translate: 130px 0; opacity: 0; } 100% { translate: 130px 0; opacity: 0; } }
+.bdg-on .bdg-glow { transform-box: fill-box; transform-origin: center; animation: bdg-glow 2.6s ease-in-out infinite; }
+@keyframes bdg-glow { 0%, 100% { opacity: .6; scale: .92; } 50% { opacity: 1; scale: 1.05; } }
+.bdg-on .bdg-wings { animation: bdg-flap 2.8s ease-in-out infinite; }
+@keyframes bdg-flap { 0%, 100% { scale: 1 1; } 50% { scale: 1.05 .96; } }
+.bdg-rays { animation: bdg-spin 16s linear infinite; }
+@keyframes bdg-spin { to { rotate: 360deg; } }
+/* level-up: the badge drops in and bounces */
+.bdg-pop { animation: bdg-pop .9s cubic-bezier(.3,1.5,.5,1) both; }
+@keyframes bdg-pop { 0% { opacity: 0; transform: scale(.3) rotate(-12deg); } 60% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+
+/* element effects */
+.fx-rise { animation: fx-rise 3.6s linear infinite; opacity: 0; }
+@keyframes fx-rise { 0% { translate: var(--x) 112px; opacity: 0; } 15% { opacity: 1; } 75% { opacity: .9; } 100% { translate: calc(var(--x) + var(--drift)) 2px; opacity: 0; } }
+.fx-leaf { animation: fx-rise 4.6s linear infinite, fx-sway 1.8s ease-in-out infinite alternate; }
+@keyframes fx-sway { from { rotate: -35deg; } to { rotate: 35deg; } }
+.fx-bubble { animation: fx-rise 4.2s ease-in infinite, fx-grow 4.2s ease-in infinite; }
+@keyframes fx-grow { from { scale: .5; } to { scale: 1.25; } }
+.fx-fall { animation: fx-fall 5s linear infinite, fx-sway 2.6s ease-in-out infinite alternate; opacity: 0; }
+@keyframes fx-fall { 0% { translate: var(--x) 0; opacity: 0; } 15% { opacity: 1; } 80% { opacity: .9; } 100% { translate: calc(var(--x) + var(--drift)) 128px; opacity: 0; } }
+.fx-bolt { animation: fx-bolt 3s steps(1) infinite; opacity: 0; }
+@keyframes fx-bolt { 0% { opacity: 0; } 4% { opacity: 1; } 8% { opacity: .15; } 12% { opacity: 1; } 22%, 100% { opacity: 0; } }
+.fx-wind { stroke-dasharray: 34 100; animation: fx-wind 2.8s ease-in-out infinite; opacity: 0; }
+@keyframes fx-wind { 0% { stroke-dashoffset: 134; opacity: 0; } 20% { opacity: .9; } 80% { opacity: .7; } 100% { stroke-dashoffset: -34; opacity: 0; } }
+.fx-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: fx-flame .7s ease-in-out infinite alternate; }
+@keyframes fx-flame { from { scale: .92 .82; opacity: .75; } to { scale: 1.06 1.08; opacity: 1; } }
+.fx-orbit { animation: bdg-spin 9s linear infinite; }
+.fx-orbit-rev { animation-duration: 14s; animation-direction: reverse; }
+
+/* tap burst */
+.bdg-tap { display: inline-block; animation: bdg-tap .5s cubic-bezier(.3,1.7,.5,1); }
+@keyframes bdg-tap { 0% { scale: 1; } 25% { scale: .84 .92; } 60% { scale: 1.07; } 100% { scale: 1; } }
+.burst-p { animation: burst-fly var(--dur, .85s) cubic-bezier(.12,.75,.3,1) both; }
+@keyframes burst-fly { 0% { translate: 0 0; scale: .3; opacity: 1; rotate: 0deg; } 65% { opacity: 1; } 100% { translate: var(--dx) var(--dy); scale: 1; opacity: 0; rotate: var(--rot, 0deg); } }
+.burst-ring { transform-box: fill-box; transform-origin: center; animation: burst-ring .75s cubic-bezier(.2,.7,.3,1) both; }
+@keyframes burst-ring { from { scale: .3; opacity: .95; } to { scale: 2.3; opacity: 0; } }
+/* level-up entrances */
+.lu-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: lu-flame 1.6s cubic-bezier(.2,.8,.3,1) both, fx-flame .7s ease-in-out 1.6s infinite alternate; }
+@keyframes lu-flame { 0% { scale: 1 0; opacity: 0; } 40% { scale: 1.08 1.15; opacity: 1; } 100% { scale: 1 1; opacity: .9; } }
+.lu-ripple { transform-box: fill-box; transform-origin: center; animation: lu-ripple 1.4s ease-out both; }
+@keyframes lu-ripple { from { scale: .5; opacity: .9; } to { scale: 2; opacity: 0; } }
+.lu-strike { animation: lu-strike .7s steps(1) .25s both; opacity: 0; }
+@keyframes lu-strike { 0% { opacity: 1; } 15% { opacity: .2; } 25% { opacity: 1; } 60% { opacity: .8; } 100% { opacity: 0; } }
+.lu-flash { animation: lu-flash .6s ease-out .3s both; opacity: 0; }
+@keyframes lu-flash { 0% { opacity: .85; } 100% { opacity: 0; } }
+.lu-glow { animation: lu-glow 1.4s ease-out .4s both; }
+@keyframes lu-glow { 0% { scale: .3; opacity: 0; } 50% { opacity: 1; } 100% { scale: 1; opacity: .8; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .bdg-tap, .burst-p, .burst-ring, .lu-flame, .lu-ripple, .lu-strike, .lu-flash, .lu-glow { animation: none !important; }
+  .lu-strike, .lu-flash { display: none; }
+  .bdg-on .bdg-twinkle, .bdg-on .bdg-sweep, .bdg-on .bdg-glow, .bdg-on .bdg-wings, .bdg-pop, .bdg-rays, .fx-flame, .fx-orbit { animation: none !important; }
+  .fx, .bdg-sweep { display: none; }
 }

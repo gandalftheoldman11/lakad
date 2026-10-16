@@ -35,6 +35,13 @@ export interface Settings {
   voice: boolean;
   /** show live distance/steps on the lock screen while recording (apps only) */
   lockScreen: boolean;
+  /** appearance: follow the phone, or always light / dark */
+  theme: 'system' | 'light' | 'dark';
+  accent: 'blue' | 'green' | 'purple' | 'coral';
+  /** best badge level and when you were last there (it fades by at most one level a week) */
+  badgeHold?: { level: number; at: number };
+  /** highest level you've seen the celebration for */
+  badgeSeen?: number;
   /** metres hidden at the start and end of routes in share images, GPX exports and feed posts (0 = off) */
   privacyTrim: number;
   /** finished the first-time setup */
@@ -49,7 +56,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  goal: 8000, units: 'km', weekGoal: 0, height: 0, weight: 0, autoPause: true, voice: true, lockScreen: true, privacyTrim: 200, onboarded: false, strideWalk: 0, strideRun: 0, strideWalkN: 0, strideRunN: 0, updatedAt: 0
+  goal: 8000, units: 'km', weekGoal: 0, height: 0, weight: 0, autoPause: true, voice: true, lockScreen: true, theme: 'system', accent: 'blue', privacyTrim: 200, onboarded: false, strideWalk: 0, strideRun: 0, strideWalkN: 0, strideRunN: 0, updatedAt: 0
 };
 
 export interface FeedPost {
@@ -66,4 +73,5 @@ export interface FeedPost {
   start: number;
   created_at: string;
   display_name: string | null;
+  badge_level?: number | null;
 }
