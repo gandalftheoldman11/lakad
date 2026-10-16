@@ -119,9 +119,14 @@ input[type="checkbox"][role="switch"]:checked::after { transform: translateX(20p
 @media (prefers-reduced-motion: reduce) { .dot-live { animation: none; } dialog.sheet[open] { animation: none; } * { transition: none !important; } }
 
 .leaflet-container { background: #F2EFE9; font-family: var(--font-sans); }   /* map paper colour, so a gap between tiles never shows as a dark line */
-/* iPhones (Safari) can leave hairline gaps between map tiles at fractional positions:
-   draw each tile half a pixel larger so neighbours overlap (Leaflet issue #3575) */
-.leaflet-tile-container img.leaflet-tile { width: 256.5px !important; height: 256.5px !important; }
+.fullmap .leaflet-bottom.leaflet-right { margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); }   /* full-screen map: zoom buttons above Pause/Finish */
+.fullmap [data-map-button] { bottom: calc(env(safe-area-inset-bottom, 0px) + 104px); left: 14px; }   /* Re-center above Pause/Finish */
+.fullmap .leaflet-control-zoom a { width: 40px; height: 40px; line-height: 40px; font-size: 22px; }
+/* iPhones (Safari) can leave hairline gaps between map tiles at fractional positions. Where two tiles
+   meet, their half-covered edge pixels are added together instead of letting the background show
+   (Leaflet issue #3575). The tile layer is its own layer, so nothing else is blended. */
+.leaflet-tile-container { isolation: isolate; }   /* blend only within one zoom level's tiles */
+.leaflet-tile-container img.leaflet-tile { mix-blend-mode: plus-lighter; }
 .recharts-wrapper text { fill: var(--muted); font-size: 12px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
