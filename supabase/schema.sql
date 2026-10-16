@@ -133,8 +133,9 @@ begin
 end;
 $$;
 
+-- runs with the owner's rights (the code generator itself stays locked to the app)
 create or replace function public.set_friend_code()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql security definer set search_path = public as $$
 begin
   if new.friend_code is null then new.friend_code := public.new_friend_code(); end if;
   return new;
@@ -240,6 +241,7 @@ end;
 $$;
 
 revoke all on function public.new_friend_code() from public, anon, authenticated;
+revoke all on function public.set_friend_code() from public, anon, authenticated;
 revoke all on function public.send_friend_request(text), public.respond_friend_request(uuid, boolean),
   public.remove_friend(uuid), public.block_user(uuid), public.are_friends(uuid, uuid), public.is_connected(uuid, uuid) from public, anon;
 grant execute on function public.send_friend_request(text), public.respond_friend_request(uuid, boolean),
