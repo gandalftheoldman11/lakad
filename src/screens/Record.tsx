@@ -1,4 +1,4 @@
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { LoadGuard, useRetryableLazy } from '../components/LoadGuard';
 import { FitText } from '../components/FitText';
 import { AnimatedNumber } from '../components/AnimatedNumber';
@@ -15,7 +15,7 @@ import { PendingBanner } from '../components/PendingBanner';
 import { LinkButton, Pill, Segmented } from '../components/ui';
 import { plans, selectPlan } from '../lib/plans';
 import { pointAt } from '../lib/planner';
-import { IconPause, IconPlay, IconRun, IconStop, IconWalk } from '../components/icons';
+import { IconCollapse, IconExpand, IconPause, IconPlay, IconRun, IconStop, IconWalk } from '../components/icons';
 import type { ActivityType } from '../types';
 
 const Stat = ({ v, l }: { v: React.ReactNode; l: string }) => <div className="min-w-0 px-3 py-[clamp(6px,1.4dvh,12px)]"><span className="num block truncate text-[clamp(17px,2.8dvh,22px)]">{v}</span><span className="label block truncate">{l}</span></div>;
@@ -65,6 +65,14 @@ export function Record() {
   const [RouteMap, retryMap] = useRetryableLazy(() => import('../components/RouteMap'));
   const { session: s, pending, split, goalAt } = useStore(rec);
   const { selected: plan } = useStore(plans);
+  const [full, setFull] = useState(false);
+  // leave full screen with Escape, and whenever the recording ends
+  useEffect(() => {
+    if (!full) return;
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setFull(false); };
+    addEventListener('keydown', k); return () => removeEventListener('keydown', k);
+  }, [full]);
+  useEffect(() => { if (!s) setFull(false); }, [s]);
   const { settings } = useStore(data);
   const [type, setType] = useState<ActivityType>('walk');
   const [indoor, setIndoor] = useState(false);
@@ -197,9 +205,13 @@ export function Record() {
         {s.indoor ? (
           <div className="grid h-full place-items-center rounded-[20px] border border-dashed border-line px-6 text-center text-[13px] text-muted">Indoor mode: no map. Distance comes from your steps.</div>
         ) : s.points.length > 0 || (s.here && s.geo !== 'coarse') ? (
+          <>
           <LoadGuard className="h-full" onRetry={retryMap}><Suspense fallback={<div className="h-full rounded-[20px] bg-cobalt-soft" />}>
             <RouteMap route={s.points} here={s.here} follow className="h-full rounded-[20px]" plan={s.plan?.coords} goal={s.plan && !s.plan.goalHit ? pointAt(s.plan.coords, s.plan.target) : null} />
           </Suspense></LoadGuard>
+          <button type="button" onClick={() => setFull(true)} aria-label="Full-screen map"
+            className="absolute top-2.5 right-2.5 z-[650] grid h-10 w-10 place-items-center rounded-full bg-surface text-ink shadow-[var(--lift)] active:scale-95"><IconExpand size={19} /></button>
+          </>
         ) : (
           <div className="lift grid h-full place-items-center rounded-[20px] p-5 text-center text-[13px] text-muted">
             {s.geo === 'blocked' ? 'No route without location. Time and steps still record.'
@@ -219,6 +231,36 @@ export function Record() {
           <IconStop size={18} />Finish
         </button>
       </div>
+
+      {full && !s.indoor && (
+        <div className="fixed inset-0 z-[900] bg-bg" role="dialog" aria-modal="true" aria-label="Full-screen map">
+          <LoadGuard className="h-full" onRetry={retryMap}><Suspense fallback={<div className="h-full bg-cobalt-soft" />}>
+            <RouteMap route={s.points} here={s.here} follow zoomButtons rounded={false} className="h-full fullmap" plan={s.plan?.coords} goal={s.plan && !s.plan.goalHit ? pointAt(s.plan.coords, s.plan.target) : null} />
+          </Suspense></LoadGuard>
+          {/* live stats on top */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-[700] px-3" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 10px)' }}>
+            <div className="pointer-events-auto lift flex items-center gap-3 rounded-[20px] bg-surface px-4 py-2.5">
+              <div className="min-w-0 flex-1">
+                <span className="num text-[30px] leading-none">{fmtDist(s.distance, u)}</span><span className="num ml-1 text-[14px] text-muted">{unitL(u)}</span>
+                <div className="mt-1 flex gap-4 text-[13px] text-muted"><span><strong className="num text-ink">{fmtTime(sec)}</strong> time</span><span><strong className="num text-ink">{fmtPace(sec, s.distance, u)}</strong> avg /{unitL(u)}</span>{s.paused && <strong className="text-mango">Paused</strong>}</div>
+              </div>
+              <button type="button" onClick={() => setFull(false)} aria-label="Exit full-screen map"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-2 text-ink active:scale-95"><IconCollapse size={20} /></button>
+            </div>
+          </div>
+          {/* pause and finish at the bottom */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[700] flex items-center justify-center gap-4 [&>button]:pointer-events-auto" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)' }}>
+            <button onClick={() => (s.paused ? void resume() : pause())} aria-label={s.paused ? 'Resume' : 'Pause'}
+              className={`grid h-16 w-16 place-items-center rounded-full shadow-[var(--lift)] transition-transform active:scale-95 ${s.paused ? 'bg-cobalt text-on-cobalt' : 'bg-surface text-ink'}`}>
+              {s.paused ? <IconPlay size={26} /> : <IconPause size={24} />}
+            </button>
+            <button onClick={() => { setFull(false); pause(); openDialog({ kind: 'finish' }); }}
+              className="flex h-16 items-center gap-2.5 rounded-full bg-mango px-8 text-[18px] font-extrabold text-[#2A1B00] shadow-[0_16px_34px_-16px_var(--mango)] transition-transform active:scale-95">
+              <IconStop size={18} />Finish
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
