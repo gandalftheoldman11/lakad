@@ -70,6 +70,7 @@ dialog.sheet {
   width: 100%; max-width: 560px; max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px)); overflow: auto;
   margin: auto auto 0; border-radius: 28px 28px 0 0; overscroll-behavior: contain;
 }
+dialog.sheet:focus { outline: none; }
 dialog.sheet[open] { animation: sheet-in .28s cubic-bezier(.2,.8,.2,1); }
 dialog.sheet::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 10px auto 0; }
 @media (min-width: 640px) {
@@ -107,3 +108,28 @@ input[type="checkbox"][role="switch"]:checked::after { transform: translateX(20p
 }
 .size-box { container-type: size; }
 .no-scrollbar { scrollbar-width: none; } .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ---------- Animations (all switched off with Reduce Motion) ---------- */
+/* Goal reached: the dot pops and sends out two soft rings */
+.goal-burst { transform-box: fill-box; transform-origin: center; animation: goal-burst 1.5s cubic-bezier(.2,.8,.2,1) both; }
+.goal-burst.second { animation-delay: .35s; }
+@keyframes goal-burst { from { transform: scale(1); opacity: .6; } to { transform: scale(5); opacity: 0; } }
+.goal-pop { transform-box: fill-box; transform-origin: center; animation: goal-pop .6s cubic-bezier(.3,1.6,.5,1) both; }
+@keyframes goal-pop { 0% { transform: scale(1); } 45% { transform: scale(1.45); } 100% { transform: scale(1); } }
+.fade-up { animation: fade-up .5s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Kilometer card: slides in, waits, slides out */
+.split-card { animation: split-card 4.5s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes split-card { 0% { opacity: 0; transform: translateY(-14px) scale(.97); } 8% { opacity: 1; transform: none; } 88% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-8px); } }
+
+/* Route draws itself: hidden until the map settles, then drawn from start to finish */
+.animate-route path.lakad-route { stroke-dasharray: 0 100000; }
+.animate-route .lakad-end, .leaflet-container:has(path.lakad-route[style*="dashoffset"]) .lakad-end:not(.route-end) { opacity: 0; }
+.route-end { animation: route-end .45s cubic-bezier(.3,1.6,.5,1) both; }
+@keyframes route-end { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-burst, .goal-pop, .fade-up, .split-card, .route-end { animation: none !important; }
+  .goal-burst { display: none; }
+}
