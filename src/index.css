@@ -118,7 +118,10 @@ input[type="checkbox"][role="switch"]:checked::after { transform: translateX(20p
 @keyframes pulse { 50% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { .dot-live { animation: none; } dialog.sheet[open] { animation: none; } * { transition: none !important; } }
 
-.leaflet-container { background: var(--cobalt-soft); font-family: var(--font-sans); }
+.leaflet-container { background: #F2EFE9; font-family: var(--font-sans); }   /* map paper colour, so a gap between tiles never shows as a dark line */
+/* iPhones (Safari) can leave hairline gaps between map tiles at fractional positions:
+   draw each tile half a pixel larger so neighbours overlap (Leaflet issue #3575) */
+.leaflet-tile-container img.leaflet-tile { width: 256.5px !important; height: 256.5px !important; }
 .recharts-wrapper text { fill: var(--muted); font-size: 12px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
