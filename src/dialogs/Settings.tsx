@@ -20,8 +20,8 @@ function Toggle({ label, checked, set }: { label: string; checked: boolean; set:
 const Sec = ({ title, sub }: { title: string; sub?: string }) => <><h4 className="m-0 text-base font-bold">{title}</h4>{sub && <p className="m-0 mt-1 text-sm text-muted">{sub}</p>}</>;
 
 const ACCENTS: [SettingsT['accent'], string, string, string][] = [
-  ['blue', 'Blue', '#1F4FE0', '#6E8FFF'], ['green', 'Green', '#0B7A51', '#3FD49A'],
-  ['purple', 'Purple', '#6A3DDB', '#A88DFF'], ['coral', 'Coral', '#BF3A25', '#FF7C66']
+  ['blue', 'Blue', '#1F4FE0', '#4F7DFF'], ['green', 'Green', '#0B7A51', '#1ED68B'],
+  ['purple', 'Purple', '#6A3DDB', '#9466FF'], ['coral', 'Coral', '#C9351A', '#FF5A36']
 ];
 
 export function SettingsDialog() {
