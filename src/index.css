@@ -16,7 +16,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #070E1C; --surface: #0F182B; --surface-2: #152036; --ink: #EEF2F9; --muted: #8D9AB2; --line: #1C2840;
-    --cobalt: #6E8FFF; --cobalt-soft: #18264A; --mango: #FFC24D; --mango-soft: #33280F;
+    --cobalt: #4F7DFF; --cobalt-soft: #142456; --mango: #FFC24D; --mango-soft: #33280F;
     --bar-soft: #253250; --danger: #FF7A6E; --ok: #4CC789; --on-cobalt: #070E1C;
     --nav: rgba(15,24,43,0.82);
     --lift: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 40px -24px rgba(0,0,0,0.6);
@@ -25,7 +25,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #070E1C; --surface: #0F182B; --surface-2: #152036; --ink: #EEF2F9; --muted: #8D9AB2; --line: #1C2840;
-  --cobalt: #6E8FFF; --cobalt-soft: #18264A; --mango: #FFC24D; --mango-soft: #33280F;
+  --cobalt: #4F7DFF; --cobalt-soft: #142456; --mango: #FFC24D; --mango-soft: #33280F;
   --bar-soft: #253250; --danger: #FF7A6E; --ok: #4CC789; --on-cobalt: #070E1C;
   --nav: rgba(15,24,43,0.82);
   --lift: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 40px -24px rgba(0,0,0,0.6);
@@ -35,15 +35,15 @@
 /* Accent colours (the yellow dot stays the same). Each has a light and a dark version. */
 :root[data-accent="green"]  { --cobalt: #0B7A51; --cobalt-soft: #D6F1E5; }
 :root[data-accent="purple"] { --cobalt: #6A3DDB; --cobalt-soft: #E8E0FF; }
-:root[data-accent="coral"]  { --cobalt: #BF3A25; --cobalt-soft: #FDE1DA; }
+:root[data-accent="coral"]  { --cobalt: #C9351A; --cobalt-soft: #FFE0D7; }
 @media (prefers-color-scheme: dark) {
-  :root[data-accent="green"]:not([data-theme="light"])  { --cobalt: #3FD49A; --cobalt-soft: #10342A; }
-  :root[data-accent="purple"]:not([data-theme="light"]) { --cobalt: #A88DFF; --cobalt-soft: #251B47; }
-  :root[data-accent="coral"]:not([data-theme="light"])  { --cobalt: #FF7C66; --cobalt-soft: #3D1912; }
+  :root[data-accent="green"]:not([data-theme="light"])  { --cobalt: #1ED68B; --cobalt-soft: #0B3526; }
+  :root[data-accent="purple"]:not([data-theme="light"]) { --cobalt: #9466FF; --cobalt-soft: #24164D; }
+  :root[data-accent="coral"]:not([data-theme="light"])  { --cobalt: #FF5A36; --cobalt-soft: #3D150C; }
 }
-:root[data-theme="dark"][data-accent="green"]  { --cobalt: #3FD49A; --cobalt-soft: #10342A; }
-:root[data-theme="dark"][data-accent="purple"] { --cobalt: #A88DFF; --cobalt-soft: #251B47; }
-:root[data-theme="dark"][data-accent="coral"]  { --cobalt: #FF7C66; --cobalt-soft: #3D1912; }
+:root[data-theme="dark"][data-accent="green"]  { --cobalt: #1ED68B; --cobalt-soft: #0B3526; }
+:root[data-theme="dark"][data-accent="purple"] { --cobalt: #9466FF; --cobalt-soft: #24164D; }
+:root[data-theme="dark"][data-accent="coral"]  { --cobalt: #FF5A36; --cobalt-soft: #3D150C; }
 
 @theme inline {
   --color-bg: var(--bg);
@@ -154,7 +154,7 @@ input[type="checkbox"][role="switch"]:checked::after { transform: translateX(20p
 @keyframes split-card { 0% { opacity: 0; transform: translateY(-14px) scale(.97); } 8% { opacity: 1; transform: none; } 88% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-8px); } }
 
 /* Route draws itself: hidden until the map settles, then drawn from start to finish */
-.animate-route path.lakad-route { stroke-dasharray: 0 100000; }
+.animate-route path.lakad-route, .animate-route path.lakad-route-casing { stroke-dasharray: 0 100000; }
 .animate-route .lakad-end, .leaflet-container:has(path.lakad-route[style*="dashoffset"]) .lakad-end:not(.route-end) { opacity: 0; }
 .route-end { animation: route-end .45s cubic-bezier(.3,1.6,.5,1) both; }
 @keyframes route-end { from { opacity: 0; } to { opacity: 1; } }
