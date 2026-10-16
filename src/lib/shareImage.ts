@@ -68,7 +68,7 @@ function levelTheme(level: number): Theme {
       v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.28)');
       x.fillStyle = v; x.fillRect(0, h * 0.55, w, h * 0.45);
     },
-    contour: 'rgba(255,255,255,0.07)',
+    contour: null,   // replaced by soft glows + fine grain (atmosphere)
     text: '#FFFFFF', muted: 'rgba(255,255,255,0.78)', rule: 'rgba(255,255,255,0.26)',
     route: ['#FFFFFF', '#FFFFFF'], glow: hexA(c.fx, 0.9), under: null,
     startFill: c.panelTop ?? c.faceDark, endFill: c.spike ?? c.gemLight, textShadow: null, halo: 'rgba(255,255,255,0.25)'
@@ -277,6 +277,40 @@ const font = (x: CanvasRenderingContext2D, weight: number, px: number, wide = fa
 function seedOf(id: string) { let h = 2166136261; for (const c of id) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) % 2147483646 + 1; }
 function rng(seed: number) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
 
+/**
+ * Level card background depth: a few large soft glows in the level's tones (placed per activity),
+ * a gentle vignette, and a fine film grain that keeps gradients smooth after phones compress the image.
+ */
+function atmosphere(x: CanvasRenderingContext2D, w: number, h: number, light: string, deep: string, seed: number) {
+  const r = rng(seed);
+  x.save();
+  // soft glows: one large near the top, one low on the opposite side, one small accent
+  const glows: [number, number, number, string, number][] = [
+    [w * (0.15 + r() * 0.25), h * (0.08 + r() * 0.12), w * 0.75, light, 0.28],
+    [w * (0.65 + r() * 0.3), h * (0.55 + r() * 0.25), w * 0.85, light, 0.18],
+    [w * (0.3 + r() * 0.4), h * (0.35 + r() * 0.2), w * 0.45, '#FFFFFF', 0.06]
+  ];
+  x.globalCompositeOperation = 'screen';
+  for (const [cx, cy, rad, col, a] of glows) {
+    const g = x.createRadialGradient(cx, cy, 0, cx, cy, rad);
+    g.addColorStop(0, hexA(col, a)); g.addColorStop(0.55, hexA(col, a * 0.35)); g.addColorStop(1, hexA(col, 0));
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+  }
+  // vignette: slightly deeper edges pull the eye to the route and numbers
+  x.globalCompositeOperation = 'multiply';
+  const v = x.createRadialGradient(w / 2, h * 0.45, Math.min(w, h) * 0.35, w / 2, h * 0.45, Math.max(w, h) * 0.75);
+  v.addColorStop(0, 'rgba(255,255,255,1)'); v.addColorStop(1, hexA(deep, 0.55));
+  x.fillStyle = v; x.fillRect(0, 0, w, h);
+  // fine grain
+  x.globalCompositeOperation = 'soft-light';
+  const tile = document.createElement('canvas'); tile.width = tile.height = 160;
+  const t = tile.getContext('2d')!, img = t.createImageData(160, 160);
+  for (let i = 0; i < img.data.length; i += 4) { const n = r() * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = n; img.data[i + 3] = 34; }
+  t.putImageData(img, 0, 0);
+  x.fillStyle = x.createPattern(tile, 'repeat')!; x.fillRect(0, 0, w, h);
+  x.restore();
+}
+
 /** Topographic contour lines from a smooth random field (marching squares), unique per activity */
 function contours(x: CanvasRenderingContext2D, w: number, h: number, color: string, seed: number) {
   const r = rng(seed), waves = Array.from({ length: 5 }, () => ({ kx: (r() - 0.5) * 0.012, ky: (r() - 0.5) * 0.012, p: r() * 6.28, a: 0.5 + r() }));
@@ -385,6 +419,7 @@ export function drawShareCard(c: HTMLCanvasElement, a: Activity, s: Settings, st
   x.clearRect(0, 0, W, H);
   th.bg?.(x, W, H);
   if (th.contour) contours(x, W, H, th.contour, seedOf(a.id));
+  if (isLevel) { const lc = BADGES[Math.max(0, Math.min(BADGES.length - 1, lvl - 1))].colors; atmosphere(x, W, H, lc.fx, lc.faceDark, seedOf(a.id) + 3); }
   const badgeSize = format === 'story' ? 330 : 280, badgeAt: [number, number] = [W - M - badgeSize / 2 + 30, (format === 'story' ? 150 : 0) + 30 + badgeSize * 0.45];
   if (isLevel) { const lv = BADGES[Math.max(0, Math.min(BADGES.length - 1, lvl - 1))]; drawElement(x, lv.element, lv.colors.fx, W, H, seedOf(a.id) + 7, badgeAt); }
   x.textBaseline = 'alphabetic';
