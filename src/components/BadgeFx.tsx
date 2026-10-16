@@ -7,7 +7,7 @@ const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.
 const v = (o: Record<string, string | number>) => o as CSSProperties;
 
 /** One particle shape per element, drawn around (0,0) */
-function Particle({ el, color, i }: { el: Element; color: string; i: number }) {
+export function Particle({ el, color, i }: { el: Element; color: string; i: number }) {
   switch (el) {
     case 'frost':
       return <path d="M0 -6 V6 M-5.2 -3 L5.2 3 M-5.2 3 L5.2 -3" stroke={color} strokeWidth="1.8" strokeLinecap="round" />;

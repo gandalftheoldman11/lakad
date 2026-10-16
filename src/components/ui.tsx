@@ -13,7 +13,7 @@ export function Button({ variant = 'ghost', className = '', ...p }: ButtonHTMLAt
   return <button {...p} className={`inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 min-h-[52px] font-bold tracking-[-0.01em] transition-transform active:scale-[.98] ${variants[variant]} ${className}`} />;
 }
 export function LinkButton({ className = '', danger, ...p }: ButtonHTMLAttributes<HTMLButtonElement> & { danger?: boolean }) {
-  return <button {...p} className={`font-bold py-1.5 ${danger ? 'text-danger' : 'text-cobalt'} ${className}`} />;
+  return <button {...p} className={`hit font-bold py-1.5 ${danger ? 'text-danger' : 'text-cobalt'} ${className}`} />;
 }
 
 export function Sheet({ open, onClose, children, label }: { open: boolean; onClose: () => void; children: ReactNode; label: string }) {
@@ -38,7 +38,10 @@ export function Sheet({ open, onClose, children, label }: { open: boolean; onClo
   );
 }
 export function SheetTitle({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
-  return <><h3 className="m-0 text-[24px] leading-tight font-extrabold tracking-[-0.02em] [font-stretch:115%]">{children}</h3>{sub && <p className="m-0 mt-1.5 text-[15px] text-muted">{sub}</p>}</>;
+  // long titles (like a long walk name) get smaller and stop at three lines, so the sheet stays balanced
+  const len = typeof children === 'string' ? children.length : 0;
+  const size = len > 40 ? 'text-[19px]' : len > 26 ? 'text-[21px]' : 'text-[24px]';
+  return <><h3 title={len > 40 ? (children as string) : undefined} className={`m-0 ${size} leading-tight font-extrabold tracking-[-0.02em] [font-stretch:115%] ${len > 40 ? 'line-clamp-3' : ''}`}>{children}</h3>{sub && <p className="m-0 mt-1.5 text-[15px] text-muted">{sub}</p>}</>;
 }
 export function Field({ label, id, children }: { label: string; id: string; children: ReactNode }) {
   return <div className="field mt-3.5 flex flex-col gap-1.5"><label htmlFor={id} className="text-sm font-semibold">{label}</label>{children}</div>;
@@ -88,7 +91,7 @@ export function Segmented<T extends string>({ value, onChange, options, label }:
     <div className="inline-flex rounded-full bg-surface-2 p-1 ring-1 ring-line" role="group" aria-label={label}>
       {options.map(([k, l]) => (
         <button key={k} aria-pressed={value === k} onClick={() => onChange(k)}
-          className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-semibold transition-colors ${value === k ? 'bg-surface text-ink shadow-[var(--lift)]' : 'text-muted'}`}>{l}</button>
+          className={`hit-y inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-semibold transition-colors ${value === k ? 'bg-surface text-ink shadow-[var(--lift)]' : 'text-muted'}`}>{l}</button>
       ))}
     </div>
   );

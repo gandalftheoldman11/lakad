@@ -68,7 +68,7 @@ export function Onboarding() {
               {GOALS.map(g => (
                 <button key={g} aria-pressed={goal === g} onClick={() => setGoal(g)}
                   className={`rounded-[16px] px-1 py-3.5 text-center transition-colors ${goal === g ? 'bg-cobalt text-on-cobalt shadow-[0_10px_24px_-12px_var(--cobalt)]' : 'lift text-ink'}`}>
-                  <span className="num block text-[18px]">{g / 1000}k</span><span className={`text-[11px] ${goal === g ? 'opacity-80' : 'text-muted'}`}>steps</span>
+                  <span className="num block text-[18px]">{g / 1000}k</span><span className={`text-[11px] ${goal === g ? '' : 'text-muted'}`}>steps</span>
                 </button>
               ))}
             </div>
