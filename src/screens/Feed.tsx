@@ -18,7 +18,10 @@ import { useMyBadge } from '../lib/myBadge';
 
 /** A friend's badge if we know their level, otherwise their initial */
 const Avatar = ({ name, level }: { name: string | null; level?: number | null }) => level
-  ? <span className="grid h-12 w-12 shrink-0 place-items-center overflow-visible"><Badge level={level} size={level >= 6 ? 66 : 42} animate={false} title={`${name || 'Friend'}: ${BADGES[level - 1]?.name} badge`} /></span>
+  ? <span className="relative grid h-12 w-12 shrink-0 place-items-center overflow-visible">
+      <span className="absolute inset-0 rounded-full" style={{ background: `radial-gradient(circle, ${BADGES[level - 1]?.colors.fx}33, transparent 70%)`, boxShadow: `inset 0 0 0 2px ${BADGES[level - 1]?.colors.rimBottom}` }} />
+      <span className="relative"><Badge level={level} size={level >= 6 ? 66 : 42} animate={false} title={`${name || 'Friend'}: ${BADGES[level - 1]?.name} badge`} /></span>
+    </span>
   : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-cobalt-soft text-[15px] font-bold text-cobalt">{(name || '?').trim().charAt(0).toUpperCase()}</span>;
 
 function YourCode({ code }: { code: string }) {
@@ -79,8 +82,10 @@ function FriendManage({ p }: { p: Person }) {
   return (
     <li className="px-4 py-3">
       <div className="flex items-center gap-3">
-        <Avatar name={p.name} level={p.level} />
-        <span className="min-w-0 flex-1"><strong className="block truncate text-[15px] font-semibold">{p.name || 'No name yet'}</strong><span className="block text-[13px] text-muted">{p.level ? `${BADGES[p.level - 1]?.name} · ` : ''}Friends since {dateLabel(p.since)}</span></span>
+        <button type="button" onClick={() => openDialog({ kind: 'friend', id: p.id })} aria-label={`Open ${p.name || 'friend'}’s profile`} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+          <Avatar name={p.name} level={p.level} />
+          <span className="min-w-0 flex-1"><strong className="block truncate text-[15px] font-semibold">{p.name || 'No name yet'}</strong><span className="block text-[13px] text-muted">{p.level ? `${BADGES[p.level - 1]?.name} · ` : ''}Friends since {dateLabel(p.since)}</span></span>
+        </button>
         <LinkButton className="text-[14px]" aria-expanded={open} onClick={() => { setOpen(!open); setConfirm(''); }}>{open ? 'Done' : 'Manage'}</LinkButton>
       </div>
       {open && (
@@ -174,10 +179,12 @@ export function Feed({ go }: { go: (t: 'record') => void }) {
             const cheers = f.cheers.get(p.id), n = cheers?.size || 0, mine = !!(me && cheers?.has(me)), isMe = p.user_id === me;
             return (
               <article key={p.id} className="lift mb-3.5 rounded-[22px] p-4">
-                <header className="flex items-center gap-3">
-                  <Avatar name={isMe ? acc.displayName || 'You' : p.display_name} level={isMe ? myLevel : p.badge_level} />
-                  <span className="min-w-0"><span className="block truncate text-[15px] font-semibold">{isMe ? 'You' : p.display_name || 'No name yet'}</span>
-                    <span className="block text-[13px] text-muted">{p.type === 'run' ? 'Ran' : 'Walked'} · {dateLabel(p.start)} · {ago(new Date(p.created_at).getTime())}</span></span>
+                <header>
+                  <button type="button" disabled={isMe} onClick={() => openDialog({ kind: 'friend', id: p.user_id })} aria-label={isMe ? undefined : `Open ${p.display_name || 'friend'}’s profile`} className="flex w-full items-center gap-3 text-left disabled:cursor-default">
+                    <Avatar name={isMe ? acc.displayName || 'You' : p.display_name} level={isMe ? myLevel : p.badge_level} />
+                    <span className="min-w-0"><span className="block truncate text-[15px] font-semibold">{isMe ? 'You' : p.display_name || 'No name yet'}</span>
+                      <span className="block text-[13px] text-muted">{p.type === 'run' ? 'Ran' : 'Walked'} · {dateLabel(p.start)} · {ago(new Date(p.created_at).getTime())}</span></span>
+                  </button>
                 </header>
                 {p.shape?.length > 1 ? <div className="my-3 aspect-video rounded-[16px] bg-cobalt-soft"><RouteShape shape={p.shape} w={320} h={180} pad={18} stroke={3.5} /></div> : <div className="h-3" />}
                 <div className="flex flex-wrap gap-x-5 gap-y-2">

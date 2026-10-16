@@ -149,7 +149,7 @@ export function Record() {
 
   return (
     <div className="fit-screen">
-      <div className="no-scrollbar -mx-5 flex shrink-0 gap-2 overflow-x-auto px-5 pb-1">
+      <div className="no-scrollbar edge-fade -mx-5 flex shrink-0 gap-2 overflow-x-auto px-5 pb-1">
         <Pill tone={s.paused ? 'warn' : 'bad'} live={!s.paused}>{s.paused ? (s.auto ? 'Auto-paused' : 'Paused') : `Recording ${s.indoor ? 'indoor ' : ''}${s.type}`}</Pill>
         {gp && <Pill tone={gp[0]}>{gp[1]}</Pill>}
         <Pill tone={sp[0]}>{sp[1]}</Pill>
@@ -210,7 +210,7 @@ export function Record() {
             <RouteMap route={s.points} here={s.here} follow className="h-full rounded-[20px]" plan={s.plan?.coords} goal={s.plan && !s.plan.goalHit ? pointAt(s.plan.coords, s.plan.target) : null} />
           </Suspense></LoadGuard>
           <button type="button" onClick={() => setFull(true)} aria-label="Full-screen map"
-            className="absolute top-2.5 right-2.5 z-[650] grid h-10 w-10 place-items-center rounded-full bg-surface text-ink shadow-[var(--lift)] active:scale-95"><IconExpand size={19} /></button>
+            className="absolute top-2.5 right-2.5 z-[650] grid h-11 w-11 place-items-center rounded-full bg-surface text-ink shadow-[var(--lift)] active:scale-95"><IconExpand size={19} /></button>
           </>
         ) : (
           <div className="lift grid h-full place-items-center rounded-[20px] p-5 text-center text-[13px] text-muted">
