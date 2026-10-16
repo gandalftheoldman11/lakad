@@ -101,11 +101,11 @@ export function PlanRoute() {
       <div className="flex flex-wrap gap-2" role="group" aria-label="Target distance">
         {QUICK[u].map(d => (
           <button key={d} aria-pressed={!custom && target === d} onClick={() => { setCustom(''); setTarget(d); }}
-            className={`min-w-14 rounded-full px-4 py-2 text-[15px] font-bold transition-colors ${!custom && target === d ? 'bg-cobalt text-on-cobalt' : 'bg-surface-2 text-ink'}`}>{d} {unitL(u)}</button>
+            className={`hit-y min-w-14 rounded-full px-4 py-2 text-[15px] font-bold transition-colors ${!custom && target === d ? 'bg-cobalt text-on-cobalt' : 'bg-surface-2 text-ink'}`}>{d} {unitL(u)}</button>
         ))}
         <input aria-label={`Custom distance in ${unitL(u)}`} inputMode="decimal" placeholder="Other" value={custom}
           onChange={e => { setCustom(e.target.value); const v = parseFloat(e.target.value); if (v >= 0.3 && v <= 60) setTarget(v); }}
-          className="w-24 rounded-full border border-line bg-surface-2 px-4 py-2 text-[15px] font-bold text-ink outline-none focus:border-cobalt" />
+          className="min-h-11 w-24 rounded-full border border-line bg-surface-2 px-4 py-2 text-[15px] font-bold text-ink outline-none focus:border-cobalt" />
       </div>
 
       <div className="mt-4 flex justify-center">

@@ -62,7 +62,7 @@ export function ShareSheet({ id }: { id: string }) {
       <div className="mt-4 flex gap-2.5" role="group" aria-label="Style">
         {STYLES.map(([k, label, bg]) => (
           <button key={k} aria-pressed={style === k} onClick={() => setStyle(k)}
-            className={`flex flex-1 flex-col items-center gap-1.5 rounded-[16px] p-2 text-[13px] font-semibold transition-colors ${style === k ? 'bg-cobalt-soft text-cobalt ring-2 ring-cobalt' : 'bg-surface-2 text-muted'}`}>
+            className={`flex flex-1 flex-col items-center gap-1.5 rounded-[16px] p-2 text-[13px] font-semibold transition-colors ${style === k ? 'bg-cobalt-soft text-ink ring-2 ring-cobalt' : 'bg-surface-2 text-muted'}`}>
             <span className="relative grid h-9 w-full place-items-center overflow-hidden rounded-[10px]" style={{ background: bg }}>{k === 'level' && <Badge level={level} size={level >= 6 ? 54 : 34} animate={false} />}</span>{label}
           </button>
         ))}
