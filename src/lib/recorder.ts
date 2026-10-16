@@ -50,13 +50,16 @@ export interface Session {
   brk: boolean;         // next point starts a new segment
   lastMoveAt: number;
   lastSplit: number;
+  /** moving seconds at the last km/mile split */
+  lastSplitT?: number;
   elevGain: number | null;
   altRef: number | null;
   altEma: number | null;
 }
 
 const KEY = 'lakad.recording';
-export const rec = createStore({ session: null as Session | null, pending: null as Session | null, now: Date.now() });
+export interface SplitEvent { n: number; sec: number; unit: 'km' | 'mi'; at: number }
+export const rec = createStore({ session: null as Session | null, pending: null as Session | null, now: Date.now(), split: null as SplitEvent | null });
 
 let tracker: Tracker | null = null;
 let pedometer: Pedometer | null = null;
@@ -252,11 +255,15 @@ function announceSplit(s: Session, distance: number, points: RoutePoint[], t: nu
   const n = Math.floor(distance / unitM(units));
   if (n <= s.lastSplit) return s.lastSplit;
   void buzz();
+  // time for this split; from the route when possible, otherwise from the clock (indoor)
+  const sp = points.length > 1 ? splitsOf(points, unitM(units)).filter(x => !x.partial) : [];
+  const fromRoute = sp.length >= n ? sp[n - 1].sec : null;
+  const splitSec = Math.max(0, fromRoute ?? (t - (s.lastSplitT ?? 0)) / Math.max(1, n - s.lastSplit));
+  s.lastSplitT = t;
+  rec.set({ split: { n, sec: splitSec, unit: units, at: Date.now() } });
   if (voice) {
-    const sp = points.length > 1 ? splitsOf(points, unitM(units)).filter(x => !x.partial) : [];
-    const lastS = sp[sp.length - 1];
     const say = (sec: number) => `${Math.floor(sec / 60)} minutes ${Math.round(sec % 60)} seconds`;
-    speak(`${n} ${unitWord(units, n)}. Time ${say(t)}.${lastS ? ` Last ${unitWord(units, 1)} ${say(lastS.sec)}.` : ''}`);
+    speak(`${n} ${unitWord(units, n)}. Time ${say(t)}. Last ${unitWord(units, 1)} ${say(splitSec)}.`);
   }
   return n;
 }
@@ -292,11 +299,25 @@ function tick() {
 }
 
 /* ---------------- lifecycle ---------------- */
+/** Permission answer collected during the Start tap (iPhone browsers only allow the prompt inside a tap) */
+let motionPerm: 'granted' | 'denied' | null = null;
+type DMEType = { requestPermission?: () => Promise<string> } | undefined;
+/** Call synchronously inside the Start tap, before any countdown */
+export function prepareStart(): Promise<void> {
+  if (data.get().settings.voice) unlockSpeech();
+  const DME = (window as unknown as { DeviceMotionEvent?: DMEType }).DeviceMotionEvent;
+  if (!DME?.requestPermission || motionPerm) return Promise.resolve();
+  return DME.requestPermission().then(r => { motionPerm = r === 'granted' ? 'granted' : 'denied'; }).catch(() => { motionPerm = 'denied'; });
+}
 async function attach(s: Session) {
   const attachMotion = () => window.addEventListener('devicemotion', onMotion);
-  const DME = (window as unknown as { DeviceMotionEvent?: { requestPermission?: () => Promise<string> } }).DeviceMotionEvent;
-  // iPhone asks for Motion permission; this must run inside the Start tap
-  if (DME?.requestPermission) DME.requestPermission().then(r => { if (r === 'granted') attachMotion(); else update({ motion: 'denied' }); }).catch(() => update({ motion: 'denied' }));
+  const DME = (window as unknown as { DeviceMotionEvent?: DMEType }).DeviceMotionEvent;
+  // iPhone asks for Motion permission; use the answer from the Start tap if we have one
+  if (DME?.requestPermission) {
+    if (motionPerm === 'granted') attachMotion();
+    else if (motionPerm === 'denied') update({ motion: 'denied' });
+    else DME.requestPermission().then(r => { if (r === 'granted') attachMotion(); else update({ motion: 'denied' }); }).catch(() => update({ motion: 'denied' }));
+  }
   else if (DME) attachMotion();
   else update({ motion: 'none' });
   detector.reset();
@@ -350,7 +371,7 @@ export async function start(type: ActivityType, indoor = false) {
   jumpRejects = []; lastRaw = null;
   const s = normalise({ type, indoor, startedAt: now, acc: 0, since: now, paused: false, auto: false, points: [], distance: 0,
     geo: indoor ? 'off' : 'waiting', brk: false, lastMoveAt: now, lastSplit: 0, elevGain: null, altRef: null, altEma: null });
-  rec.set({ session: s });
+  rec.set({ session: s, split: null });
   await attach(s);
   if (liveWanted()) void startLive(liveStats(rec.get().session ?? s));
   persist();
