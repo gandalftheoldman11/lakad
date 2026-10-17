@@ -5,7 +5,7 @@ import { data } from '../lib/data';
 import { closeDialog } from '../lib/dialogs';
 import type { LatLng } from '../lib/routing';
 import { smartRouter, covers, offline, saveAreaAround, AREA_RADIUS } from '../lib/offlineArea';
-import { suggestLoops, pointAt, headingName, lineLength, type LoopOption } from '../lib/planner';
+import { suggestLoops, pointAt, headingName, lineLength, strokePoints, type LoopOption } from '../lib/planner';
 import { savePlan } from '../lib/plans';
 import { fmtDist, unitL, unitM } from '../lib/format';
 import { Button, LinkButton, Segmented, SheetTitle } from '../components/ui';
@@ -26,8 +26,21 @@ export function PlanRoute() {
   const [pick, setPick] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [pts, setPts] = useState<LatLng[]>([]);
-  const [closeLoop, setCloseLoop] = useState(false);
+  // route points, "back to start", and undo history kept together so undo is always exact
+  type Shape = { pts: LatLng[]; loop: boolean; back: boolean };
+  const [draw, setDraw] = useState<Shape & { hist: Shape[] }>({ pts: [], loop: false, back: false, hist: [] });
+  const pts = draw.pts, closeLoop = draw.loop, outBack = draw.back, hist = draw.hist;
+  const [pen, setPen] = useState(true);        // Draw on: one finger draws; off: the map moves
+  const setPts = (next: LatLng[] | ((p: LatLng[]) => LatLng[]), loop?: boolean, back?: boolean) =>
+    setDraw(d => ({ pts: typeof next === 'function' ? next(d.pts) : next, loop: loop ?? d.loop, back: back ?? d.back, hist: [...d.hist.slice(-30), { pts: d.pts, loop: d.loop, back: d.back }] }));
+  const undo = () => setDraw(d => { const last = d.hist[d.hist.length - 1]; return last ? { ...last, hist: d.hist.slice(0, -1) } : d; });
+  const onStroke = (line: LatLng[]) => {
+    if (!line.length) return;
+    if (!start) { setStart(line[0]); setPts(strokePoints(line.slice(1))); return; }
+    setPts(p => [...p, ...strokePoints(line)]);
+  };
+  const onMovePoint = (i: number, q: LatLng) => setPts(p => p.map((x, j) => (j === i ? q : x)));
+  const outAndBack = () => setPts(p => p, false, !outBack);
   const [drawn, setDrawn] = useState<{ coords: LatLng[]; distance: number } | null>(null);
   const abort = useRef<AbortController | null>(null);
   const targetM = target * M;
@@ -68,7 +81,8 @@ export function PlanRoute() {
   // drawing: route through your points along real paths (waits for you to pause tapping)
   useEffect(() => {
     if (mode !== 'draw' || !start || pts.length === 0) { setDrawn(null); return; }
-    const all = [start, ...pts, ...(closeLoop ? [start] : [])];
+    // out & back: there and back the same way; loop: from the last point straight back to the start
+    const all = outBack ? [start, ...pts, ...[...pts].reverse().slice(1), start] : [start, ...pts, ...(closeLoop ? [start] : [])];
     const ctl = new AbortController(), t = setTimeout(async () => {
       setBusy(true); setErr('');
       try { const r = await smartRouter(all, ctl.signal); if (!ctl.signal.aborted) setDrawn(r); }
@@ -76,7 +90,7 @@ export function PlanRoute() {
       finally { if (!ctl.signal.aborted) setBusy(false); }
     }, 650);
     return () => { clearTimeout(t); ctl.abort(); };
-  }, [mode, start, pts, closeLoop]);
+  }, [mode, start, pts, closeLoop, outBack]);
 
   const active = mode === 'loop' ? options[pick]?.route ?? null : drawn;
   const goal = useMemo(() => (active && active.distance > targetM * 1.01 ? pointAt(active.coords, targetM * (lineLength(active.coords) / active.distance)) : null), [active, targetM]);
@@ -112,12 +126,23 @@ export function PlanRoute() {
         <Segmented value={mode} onChange={setMode} label="How to plan" options={[['loop', 'Suggest a loop'], ['draw', 'Draw my own']]} />
       </div>
 
+      <div className="relative">
       <LoadGuard className="mt-3 h-[44dvh] min-h-[260px]" onRetry={retryMap}><Suspense fallback={<div className="mt-3 h-[44dvh] min-h-[260px] rounded-[20px] bg-cobalt-soft" />}>
         <PlanMap className="mt-3 h-[44dvh] min-h-[260px]" center={start} start={start} onTap={onTap}
           waypoints={mode === 'draw' ? pts : []} route={mode === 'draw' ? drawn?.coords ?? [] : []}
           options={mode === 'loop' ? options.map((o, i) => ({ coords: o.route.coords, active: i === pick, onPick: () => setPick(i) })) : []}
-          goal={goal} goalLabel={`${fmtDist(targetM, u)} ${unitL(u)}`} />
+          goal={goal} goalLabel={`${fmtDist(targetM, u)} ${unitL(u)}`}
+          drawing={mode === 'draw' && pen} onStroke={onStroke} onMovePoint={mode === 'draw' ? onMovePoint : undefined} />
       </Suspense></LoadGuard>
+      {mode === 'draw' && (
+        <div className="absolute top-5 left-2 z-[650] flex rounded-full bg-surface p-1 shadow-[var(--lift)]" role="group" aria-label="Map mode">
+          {([[true, '✏️ Draw'], [false, '✋ Move']] as const).map(([v, l]) => (
+            <button key={String(v)} type="button" data-map-button aria-pressed={pen === v} onClick={() => setPen(v)}
+              className={`hit-y rounded-full px-3 py-1.5 text-[13px] font-bold transition-colors ${pen === v ? 'bg-cobalt text-on-cobalt' : 'text-muted'}`}>{l}</button>
+          ))}
+        </div>
+      )}
+      </div>
       {locMsg && <p className="m-0 mt-1 text-[13px] text-muted">{locMsg}</p>}
       <div className="mt-2 flex items-center justify-between gap-3 text-[13px]">
         <span className={local ? 'font-semibold text-ok' : 'text-muted'}>{local ? '✓ Saved area: works offline' : off.online ? 'Using online routing' : 'Offline, and this area isn’t saved'}</span>
@@ -154,7 +179,7 @@ export function PlanRoute() {
         <div className="mt-3">
           <div className="rounded-[16px] bg-surface-2 px-4 py-3">
             {!start ? <p className="m-0 text-[14px] text-muted">Tap the map to set your start.</p>
-              : !pts.length ? <p className="m-0 text-[14px] text-muted">Tap the map to add points along your way. The route follows streets and paths.</p>
+              : !pts.length ? <p className="m-0 text-[14px] text-muted">Draw along the streets with your finger, or tap to add points. The route snaps to streets and paths. Pinch to zoom; switch to Move to pan.</p>
               : (
                 <>
                   <div className="flex items-baseline justify-between">
@@ -165,10 +190,11 @@ export function PlanRoute() {
                 </>
               )}
           </div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Button className="min-h-10 flex-1 px-3 py-1.5 text-[14px]" disabled={!pts.length} onClick={() => setPts(x => x.slice(0, -1))}>Undo</Button>
-            <Button className={`min-h-10 flex-1 px-3 py-1.5 text-[14px] ${closeLoop ? 'ring-2 ring-[var(--cobalt)]' : ''}`} aria-pressed={closeLoop} disabled={!pts.length} onClick={() => setCloseLoop(v => !v)}>{closeLoop ? 'Loop: on' : 'Back to start'}</Button>
-            <Button className="min-h-10 flex-1 px-3 py-1.5 text-[14px]" disabled={!pts.length} onClick={() => { setPts([]); setCloseLoop(false); }}>Clear</Button>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <Button className="min-h-11 flex-1 px-3 py-1.5 text-[14px]" disabled={!hist.length} onClick={undo}>Undo</Button>
+            <Button className={`min-h-11 flex-1 px-3 py-1.5 text-[14px] ${closeLoop ? 'ring-2 ring-[var(--cobalt)]' : ''}`} aria-pressed={closeLoop} disabled={!pts.length} onClick={() => setPts(pts, !closeLoop, false)}>{closeLoop ? 'Loop: on' : 'Back to start'}</Button>
+            <Button className={`min-h-11 flex-1 px-3 py-1.5 text-[14px] ${outBack ? 'ring-2 ring-[var(--cobalt)]' : ''}`} aria-pressed={outBack} disabled={!pts.length} onClick={outAndBack}>{outBack ? 'Out & back: on' : 'Out & back'}</Button>
+            <Button className="min-h-11 flex-1 px-3 py-1.5 text-[14px]" disabled={!pts.length} onClick={() => setPts([], false, false)}>Clear</Button>
           </div>
         </div>
       )}

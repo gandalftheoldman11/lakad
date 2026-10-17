@@ -11,6 +11,7 @@ import { isIOSApp, isNative } from '../lib/platform';
 import { toast } from '../lib/ui';
 import { Actions, Button, ErrorText, Field, LinkButton, Segmented, SheetTitle } from '../components/ui';
 import { offline, saveAreaAround, deleteArea, AREA_RADIUS } from '../lib/offlineArea';
+import { ReminderControls } from '../components/ReminderControls';
 import { ago } from '../lib/format';
 import type { Settings as SettingsT, Units } from '../types';
 
@@ -139,6 +140,10 @@ export function SettingsDialog() {
         )}
       </div>
 
+      <div className="mt-[22px] border-t border-line pt-[18px]">
+        <Sec title="Reminders" sub="A daily nudge to keep your step streak." />
+        <ReminderControls />
+      </div>
       <div className="mt-[22px] border-t border-line pt-[18px]">
         <Sec title="Recording" />
         <Toggle label="Auto-pause when you stop moving" checked={autoPause} set={setAutoPause} />
