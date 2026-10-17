@@ -7,6 +7,7 @@ import { data } from '../lib/data';
 import { stepsByDay, streakInfo, sumWhere } from '../lib/metrics';
 import { fmtDist, fmtDur, fmtInt, sod, unitL, unitM, weekStart, ymd } from '../lib/format';
 import { openDialog } from '../lib/dialogs';
+import { ReminderPrompt } from '../components/ReminderPrompt';
 import { TopBar } from '../components/TopBar';
 import { WeekSteps } from '../components/charts';
 import { ActivityList } from '../components/ActivityList';
@@ -65,6 +66,8 @@ export function Today({ go }: { go: (t: 'record') => void }) {
           <span className="label">day streak ›</span>
         </button>
       </div>
+
+      <ReminderPrompt met={si.todayMet} />
 
       {settings.weekGoal > 0 && (
         <div className="lift mt-6 rounded-[22px] px-4 py-3.5">
