@@ -57,6 +57,15 @@ export async function scheduleReminder() {
   } catch { /* notifications not allowed: nothing to schedule */ }
 }
 
+/** what the phone says about notifications for Lakad */
+export async function reminderPermission(): Promise<'granted' | 'prompt' | 'denied' | 'unsupported'> {
+  if (!isNative) return 'unsupported';
+  try {
+    const p = (await LocalNotifications.checkPermissions()).display;
+    return p === 'granted' ? 'granted' : p === 'denied' ? 'denied' : 'prompt';
+  } catch { return 'unsupported'; }
+}
+
 /** turn on: ask permission first; returns false if the phone said no */
 export async function enableReminders() {
   if (!isNative) return false;
