@@ -36,6 +36,36 @@ export function stepsByDay(acts: Activity[], days: Record<number, DayEntry>) {
   for (const d of Object.values(days)) if (d.steps > 0) m.set(d.date, Math.max(m.get(d.date) || 0, d.steps));
   return m;
 }
+export interface StreakInfo {
+  days: number;              // current streak (today counts once the goal is reached)
+  freezes: number;           // freezes ready to use (max 2)
+  frozen: Set<number>;       // days a freeze covered, in the current streak
+  todaySteps: number;
+  todayLeft: number;         // steps still needed today
+  todayMet: boolean;
+}
+/** Streak freezes: one each week (from Monday), hold up to 2, new users start with 1. */
+export const FREEZE_MAX = 2;
+/**
+ * Streak with freezes, worked out from your day totals (nothing extra stored, so it can't drift):
+ * walking forward day by day, a missed day uses a freeze if you have one; otherwise the streak resets.
+ */
+export function streakInfo(map: Map<number, number>, goal: number, now = Date.now()): StreakInfo {
+  const today = sod(now), todaySteps = map.get(today) || 0, todayMet = goal > 0 && todaySteps >= goal;
+  const metDays = [...map.entries()].filter(([, v]) => v >= goal && goal > 0).map(([d]) => d).sort((a, b) => a - b);
+  let days = 0, freezes = 1, frozen = new Set<number>();
+  if (metDays.length) {
+    for (let d = metDays[0]; d < today; d = addDays(d, 1)) {
+      if (new Date(d).getDay() === 1 && d !== metDays[0]) freezes = Math.min(FREEZE_MAX, freezes + 1);   // new week, new freeze
+      if ((map.get(d) || 0) >= goal) { days++; continue; }
+      if (days > 0 && freezes > 0) { freezes--; frozen.add(d); continue; }
+      days = 0; frozen = new Set();
+    }
+    if (new Date(today).getDay() === 1 && today !== metDays[0]) freezes = Math.min(FREEZE_MAX, freezes + 1);
+  }
+  if (todayMet) days++;
+  return { days, freezes, frozen, todaySteps, todayLeft: Math.max(0, goal - todaySteps), todayMet };
+}
 export function streak(map: Map<number, number>, goal: number) {
   let d = sod(Date.now()), n = 0;
   if ((map.get(d) || 0) < goal) d = addDays(d, -1);

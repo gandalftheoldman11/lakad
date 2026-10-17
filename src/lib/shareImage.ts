@@ -48,7 +48,7 @@ const THEMES: Record<Exclude<ShareStyle, 'level'>, Theme> = {
   sticker: {
     bg: null, contour: null,
     text: '#FFFFFF', muted: 'rgba(255,255,255,0.86)', rule: 'rgba(255,255,255,0.45)',
-    route: ['#FFFFFF', '#FFB627'], glow: 'rgba(0,0,0,0.35)', under: 'rgba(0,0,0,0.28)',
+    route: ['#FFFFFF', '#FFFFFF'], glow: 'rgba(0,0,0,0.35)', under: 'rgba(0,0,0,0.28)',   // plain white; the soft shadow keeps it visible on bright photos
     startFill: '#FFFFFF', endFill: '#FFB627', textShadow: 'rgba(0,0,0,0.45)'
   }
 };
@@ -311,6 +311,156 @@ function atmosphere(x: CanvasRenderingContext2D, w: number, h: number, light: st
   x.restore();
 }
 
+/**
+ * Cinematic "ground" along the bottom edge in the level's element: a soft, out-of-focus back layer,
+ * crisper shapes in front, light rising from the edge and a few particles catching it.
+ * Story size has room under the stats, so the effect is fuller there; Post keeps it low and soft.
+ */
+function groundFx(x: CanvasRenderingContext2D, el: Element, W: number, H: number, c: { fx: string; panelTop?: string; faceDark: string }, seed: number, story: boolean) {
+  const r = rng(seed), k = story ? 1 : 0.62, top = H - (story ? 330 : 200), base = H;
+  const clear = H - (story ? 238 : 52);   // stats labels end here: sparks, rain and specks stay below
+  const deep = c.panelTop ?? c.faceDark;
+  const blur = (px: number) => { try { x.filter = px ? `blur(${px}px)` : 'none'; } catch { /* older browsers: draw sharp */ } };
+  x.save();
+  // light rising from the bottom edge
+  const haze = x.createLinearGradient(0, base, 0, top - 80);
+  haze.addColorStop(0, hexA(c.fx, 0.42 * k)); haze.addColorStop(0.45, hexA(c.fx, 0.14 * k)); haze.addColorStop(1, hexA(c.fx, 0));
+  x.globalCompositeOperation = 'screen'; x.fillStyle = haze; x.fillRect(0, top - 80, W, base - top + 80);
+  x.globalCompositeOperation = 'source-over';
+  const wave = (y0: number, amp: number, len: number, ph: number) => (xx: number) => y0 + Math.sin(xx / len + ph) * amp + Math.sin(xx / (len * 0.43) + ph * 2.1) * amp * 0.35;
+  const fillUnder = (f: (xx: number) => number, fill: string | CanvasGradient) => { x.beginPath(); x.moveTo(0, base); for (let xx = 0; xx <= W; xx += 8) x.lineTo(xx, f(xx)); x.lineTo(W, base); x.closePath(); x.fillStyle = fill; x.fill(); };
+  const bokeh = (n: number, y1: number, y2: number, rMin: number, rMax: number, col: string, a: number) => {
+    for (let i = 0; i < n; i++) { const px = r() * W, py = y1 + r() * (y2 - y1), rad = rMin + r() * (rMax - rMin);
+      const g = x.createRadialGradient(px, py, 0, px, py, rad); g.addColorStop(0, hexA('#FFFFFF', a)); g.addColorStop(0.3, hexA(col, a)); g.addColorStop(1, hexA(col, 0));
+      x.fillStyle = g; x.beginPath(); x.arc(px, py, rad, 0, Math.PI * 2); x.fill(); } };
+  const h = base - top;
+  switch (el) {
+    case 'fire': case 'ember': {
+      if (el === 'fire') {
+        for (const [layer, hh, a, bl] of [[0, 1, 0.55, 14], [1, 0.72, 0.9, 3]] as const) {
+          blur(bl); x.globalCompositeOperation = 'screen';
+          const n = layer ? 16 : 10;
+          for (let i = 0; i < n; i++) {
+            const cx = (i + r() * 0.8) * (W / n), fw = W / n * (1.3 + r() * 0.8), fh = h * hh * k * (0.5 + r() * 0.6);
+            const g = x.createLinearGradient(0, base, 0, base - fh);
+            g.addColorStop(0, hexA('#FFE9A8', a)); g.addColorStop(0.35, hexA('#FF9A3D', a * 0.85)); g.addColorStop(0.75, hexA('#E2402B', a * 0.45)); g.addColorStop(1, hexA('#E2402B', 0));
+            x.fillStyle = g; x.beginPath(); x.moveTo(cx - fw / 2, base);
+            x.bezierCurveTo(cx - fw * 0.55, base - fh * 0.5, cx - fw * 0.1, base - fh * 0.75, cx + (r() - 0.5) * fw * 0.3, base - fh);
+            x.bezierCurveTo(cx + fw * 0.1, base - fh * 0.7, cx + fw * 0.55, base - fh * 0.45, cx + fw / 2, base); x.closePath(); x.fill();
+          }
+        }
+        blur(0);
+      }
+      if (el === 'ember') {
+        // a smouldering bed of embers along the edge, lit from within
+        blur(10); x.globalCompositeOperation = 'screen';
+        const bed = x.createLinearGradient(0, base, 0, base - h * 0.45 * k); bed.addColorStop(0, hexA('#FF8A3D', 0.85)); bed.addColorStop(0.5, hexA('#E2402B', 0.35)); bed.addColorStop(1, hexA('#E2402B', 0));
+        fillUnder(wave(base - h * 0.32 * k, 16, 110, r() * 6), bed); blur(2);
+        for (let i = 0; i < 90; i++) { const px = r() * W, py = base - r() * h * 0.22 * k, rad = 2 + r() * 5; x.fillStyle = hexA(r() > 0.6 ? '#FFE7A0' : '#FF9A3D', 0.5 + r() * 0.5); x.beginPath(); x.arc(px, py, rad, 0, Math.PI * 2); x.fill(); }
+        blur(0);
+      }
+      // sparks rising with short light trails
+      x.globalCompositeOperation = 'screen';
+      for (let i = 0; i < (el === 'fire' ? 26 : 60); i++) {
+        const px = r() * W, py = clear + 20 + r() * (base - clear - 20), len = 10 + r() * (el === 'ember' ? 50 : 34), rad = (2 + r() * 4) * (el === 'ember' ? 1.3 : 1), sway = (r() - 0.5) * 14;
+        const g = x.createLinearGradient(px, py + len, px + sway, py); g.addColorStop(0, hexA(c.fx, 0)); g.addColorStop(1, hexA('#FFE7A0', 0.9));
+        x.strokeStyle = g; x.lineWidth = rad * 0.9; x.lineCap = 'round'; x.beginPath(); x.moveTo(px - sway * 0.3, py + len); x.quadraticCurveTo(px, py + len * 0.4, px + sway, py); x.stroke();
+      }
+      bokeh(el === 'ember' ? 16 : 10, clear + 10, base, el === 'ember' ? 12 : 8, el === 'ember' ? 36 : 22, el === 'ember' ? '#FF9A3D' : c.fx, (el === 'ember' ? 0.5 : 0.35) * k);
+      break;
+    }
+    case 'frost': {
+      blur(22); fillUnder(wave(base - h * 0.5 * k, 22, 140, r() * 6), hexA('#FFFFFF', 0.42)); blur(10); fillUnder(wave(base - h * 0.32 * k, 16, 120, r() * 6), hexA('#EAF7FF', 0.5)); blur(0);
+      const drift = x.createLinearGradient(0, base - h * 0.3 * k, 0, base); drift.addColorStop(0, hexA('#F4FBFF', 0.85)); drift.addColorStop(1, hexA('#CFE8FA', 0.95));
+      fillUnder(wave(base - h * 0.2 * k, 14, 190, r() * 6), drift);
+      x.globalCompositeOperation = 'screen'; bokeh(40, clear, base - 30, 3, 9, '#FFFFFF', 0.75); bokeh(8, clear, base, 14, 30, '#DFF3FF', 0.25);
+      break;
+    }
+    case 'leaf': {
+      x.globalCompositeOperation = 'screen'; bokeh(9, base - h * 0.55, base - h * 0.2, 30, 60, '#E8FF9C', 0.25); x.globalCompositeOperation = 'source-over';
+      for (const [layer, col, hh] of [[0, hexA(deep, 0.65), 0.55], [1, hexA('#04210E', 0.92), 0.36]] as const) {
+        if (!layer) blur(4);
+        const n = Math.round(W / (layer ? 7 : 11));
+        x.fillStyle = col;
+        for (let i = 0; i < n; i++) {
+          const bx = (i + r()) * (W / n), bh = h * hh * k * (0.35 + r() * 0.9), lean = (r() - 0.5) * bh * 0.5, bw = 3 + r() * 5;
+          x.beginPath(); x.moveTo(bx - bw, base); x.quadraticCurveTo(bx + lean * 0.3, base - bh * 0.6, bx + lean, base - bh); x.quadraticCurveTo(bx + lean * 0.4 + bw * 0.3, base - bh * 0.55, bx + bw, base); x.fill();
+        }
+        blur(0);
+      }
+      x.fillStyle = hexA('#04210E', 0.92); x.fillRect(0, base - 6, W, 6);
+      for (let i = 0; i < 7; i++) { const px = r() * W, py = clear + 20 + r() * (base - clear) * 0.5; x.save(); x.translate(px, py); x.rotate(r() * 6); x.scale(2.6, 2.6);
+        const g = x.createLinearGradient(0, -7, 0, 7); g.addColorStop(0, '#E9FFC8'); g.addColorStop(1, c.fx); x.fillStyle = g; x.globalAlpha = 0.85;
+        x.beginPath(); x.moveTo(0, -7); x.bezierCurveTo(5.5, -3, 5.5, 3, 0, 7); x.bezierCurveTo(-5.5, 3, -5.5, -3, 0, -7); x.fill(); x.restore(); }
+      break;
+    }
+    case 'water': {
+      const layers: [number, number, number, number][] = [[0.62, 22, 0.28, 10], [0.42, 18, 0.5, 4], [0.22, 14, 0.85, 0]];
+      layers.forEach(([hh, amp, a, bl], i) => {
+        blur(bl); const f = wave(base - h * hh * k, amp, 120 + i * 40, r() * 6);
+        const g = x.createLinearGradient(0, base - h * hh * k - amp, 0, base); g.addColorStop(0, hexA(c.fx, a)); g.addColorStop(1, hexA(deep, Math.min(1, a + 0.2)));
+        fillUnder(f, g); blur(0);
+        x.globalCompositeOperation = 'screen'; x.strokeStyle = hexA('#FFFFFF', 0.35 + i * 0.15); x.lineWidth = 2;
+        x.beginPath(); for (let xx = 0; xx <= W; xx += 8) (xx ? x.lineTo(xx, f(xx)) : x.moveTo(xx, f(xx))); x.stroke(); x.globalCompositeOperation = 'source-over';
+        for (let j = 0; j < 8; j++) { const px = r() * W, py = f(px) + 2; const g2 = x.createRadialGradient(px, py, 0, px, py, 16); g2.addColorStop(0, 'rgba(255,255,255,.9)'); g2.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g2; x.fillRect(px - 16, py - 16, 32, 32); }
+      });
+      x.globalCompositeOperation = 'screen'; bokeh(12, clear, base - h * 0.3, 4, 10, '#BDEBFF', 0.55);
+      break;
+    }
+    case 'storm': {
+      const puffs = Array.from({ length: 10 }, (_, i) => [(i / 9) * W + (r() - 0.5) * 80, base - h * (0.2 + r() * 0.3) * k, 120 + r() * 100] as const);
+      // lit rims first, then the dark cloud bodies over them
+      blur(26); x.globalCompositeOperation = 'screen';
+      for (const [cx, cy, rad] of puffs) { x.fillStyle = hexA(c.fx, 0.45); x.beginPath(); x.arc(cx, cy - 18, rad, 0, Math.PI * 2); x.fill(); }
+      blur(14); x.globalCompositeOperation = 'source-over';
+      for (const [cx, cy, rad] of puffs) { x.fillStyle = 'rgba(16,6,34,.88)'; x.beginPath(); x.arc(cx, cy, rad, 0, Math.PI * 2); x.fill(); }
+      blur(0);
+      // lightning glowing inside the clouds
+      x.globalCompositeOperation = 'screen';
+      for (const [gx, gr] of [[W * (0.18 + r() * 0.15), 260], [W * (0.68 + r() * 0.12), 320]] as const) { const gy = base - h * 0.32 * k, g = x.createRadialGradient(gx, gy, 0, gx, gy, gr); g.addColorStop(0, 'rgba(246,228,255,.95)'); g.addColorStop(0.3, hexA(c.fx, 0.55)); g.addColorStop(1, hexA(c.fx, 0)); x.fillStyle = g; x.fillRect(gx - gr, gy - gr, gr * 2, gr * 2); }
+      const bolt = (sx: number, sy: number, steps: number, wdt: number) => { x.lineWidth = wdt; let bx = sx, by = sy; x.beginPath(); x.moveTo(bx, by); const pts: [number, number][] = [];
+        for (let i = 0; i < steps; i++) { bx += (r() - 0.5) * 60; by += h * 0.075 * k; x.lineTo(bx, by); pts.push([bx, by]); } x.stroke(); return pts; };
+      x.strokeStyle = 'rgba(255,255,255,.97)'; x.shadowColor = '#F2D4FF'; x.shadowBlur = 26; x.lineJoin = 'round'; x.lineCap = 'round';
+      const main = bolt(W * (0.66 + r() * 0.08), base - h * 0.62 * k, 7, 4.5);
+      bolt(main[2][0], main[2][1], 3, 2.2); bolt(main[4][0], main[4][1], 2, 1.6);
+      x.shadowBlur = 0;
+      x.strokeStyle = 'rgba(225,205,255,.28)'; x.lineWidth = 2;
+      for (let i = 0; i < 90; i++) { const px = r() * W, py = clear + r() * (base - clear); x.beginPath(); x.moveTo(px, py); x.lineTo(px - 10, py + 38); x.stroke(); }
+      break;
+    }
+    case 'wind': {
+      const dune = x.createLinearGradient(0, base - h * 0.3 * k, 0, base); dune.addColorStop(0, hexA('#FFFFFF', 0.4)); dune.addColorStop(1, hexA('#FFFFFF', 0.16));
+      blur(6); fillUnder(wave(base - h * 0.28 * k, 26, 260, r() * 6), dune); blur(0);
+      x.globalCompositeOperation = 'screen'; x.lineCap = 'round';
+      for (let i = 0; i < 24; i++) {
+        const y0 = base - h * (0.06 + r() * 0.8) * k, x0 = -100 + r() * W * 0.4, len = W * (0.5 + r() * 0.7), amp = 20 + r() * 44, w = 2 + r() * 5;
+        const g = x.createLinearGradient(x0, 0, x0 + len, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.4, `rgba(255,255,255,${0.45 + r() * 0.45})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+        if (i < 8) { blur(5); }
+        x.strokeStyle = g; x.lineWidth = i < 8 ? w * 2.4 : w; x.beginPath(); x.moveTo(x0, y0); x.bezierCurveTo(x0 + len * 0.3, y0 - amp, x0 + len * 0.6, y0 + amp, x0 + len, y0 - amp * 0.4); x.stroke(); blur(0);
+      }
+      // blowing sand: short streaks along the wind
+      x.strokeStyle = 'rgba(255,255,255,.75)'; x.lineWidth = 2;
+      for (let i = 0; i < 40; i++) { const px = r() * W, py = base - r() * h * 0.6 * k, l = 8 + r() * 22; x.beginPath(); x.moveTo(px, py); x.lineTo(px + l, py - l * 0.18); x.stroke(); }
+      bokeh(14, clear, base, 2, 5, '#FFFFFF', 0.7);
+      break;
+    }
+    case 'cosmic': {
+      // stars above, then a glowing planet horizon
+      x.globalCompositeOperation = 'screen'; bokeh(40, clear, base - h * 0.25, 1.5, 4, '#FFF6D0', 0.9);
+      const R = W * 2.2, cx = W * 0.5, cy = base - h * 0.32 * k + R;
+      const atm = x.createRadialGradient(cx, cy, R - 6, cx, cy, R + 120); atm.addColorStop(0, hexA('#FFE27A', 0.95)); atm.addColorStop(0.08, hexA(c.fx, 0.55)); atm.addColorStop(1, hexA(c.fx, 0));
+      x.fillStyle = atm; x.fillRect(0, top - 140, W, base - top + 140);
+      x.globalCompositeOperation = 'source-over';
+      const planet = x.createLinearGradient(0, cy - R, 0, base); planet.addColorStop(0, hexA(deep, 0.95)); planet.addColorStop(1, hexA('#02130A', 0.98));
+      x.fillStyle = planet; x.beginPath(); x.arc(cx, cy, R, 0, Math.PI * 2); x.fill();
+      x.globalCompositeOperation = 'screen'; x.strokeStyle = hexA('#FFF1B0', 0.9); x.lineWidth = 3; x.shadowColor = '#FFE27A'; x.shadowBlur = 24;
+      x.beginPath(); x.arc(cx, cy, R, Math.PI * 1.25, Math.PI * 1.75); x.stroke(); x.shadowBlur = 0;
+      break;
+    }
+  }
+  x.restore();
+}
+
 /** Topographic contour lines from a smooth random field (marching squares), unique per activity */
 function contours(x: CanvasRenderingContext2D, w: number, h: number, color: string, seed: number) {
   const r = rng(seed), waves = Array.from({ length: 5 }, () => ({ kx: (r() - 0.5) * 0.012, ky: (r() - 0.5) * 0.012, p: r() * 6.28, a: 0.5 + r() }));
@@ -419,7 +569,11 @@ export function drawShareCard(c: HTMLCanvasElement, a: Activity, s: Settings, st
   x.clearRect(0, 0, W, H);
   th.bg?.(x, W, H);
   if (th.contour) contours(x, W, H, th.contour, seedOf(a.id));
-  if (isLevel) { const lc = BADGES[Math.max(0, Math.min(BADGES.length - 1, lvl - 1))].colors; atmosphere(x, W, H, lc.fx, lc.faceDark, seedOf(a.id) + 3); }
+  if (isLevel) {
+    const lb = BADGES[Math.max(0, Math.min(BADGES.length - 1, lvl - 1))];
+    atmosphere(x, W, H, lb.colors.fx, lb.colors.faceDark, seedOf(a.id) + 3);
+    groundFx(x, lb.element, W, H, lb.colors, seedOf(a.id) + 11, format === 'story');
+  }
   const badgeSize = format === 'story' ? 330 : 280, badgeAt: [number, number] = [W - M - badgeSize / 2 + 30, (format === 'story' ? 150 : 0) + 30 + badgeSize * 0.45];
   if (isLevel) { const lv = BADGES[Math.max(0, Math.min(BADGES.length - 1, lvl - 1))]; drawElement(x, lv.element, lv.colors.fx, W, H, seedOf(a.id) + 7, badgeAt); }
   x.textBaseline = 'alphabetic';

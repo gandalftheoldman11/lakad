@@ -79,3 +79,37 @@ export async function suggestLoops(router: Router, start: LatLng, target: number
     try { onOption(await fitLoop(router, start, target, h % 360, 0.03, 4, signal, extraTries)); } catch (e) { if (signal?.aborted) return; throw e; }
   }
 }
+
+/**
+ * A traced finger stroke → the few points where it actually turns (Douglas–Peucker, `tol` metres),
+ * plus one every ~`maxGap` metres on long straights so the snapped route follows the drawn line.
+ */
+export function strokePoints(line: LatLng[], tol = 22, maxGap = 350, max = 25): LatLng[] {
+  if (line.length < 2) return line.slice();
+  const lat0 = (line[0][0] * Math.PI) / 180, X = (p: LatLng) => [p[1] * 111320 * Math.cos(lat0), p[0] * 110540] as const;
+  const xy = line.map(X);
+  const keep = new Uint8Array(line.length); keep[0] = keep[line.length - 1] = 1;
+  const dp = (a: number, b: number) => {
+    let far = -1, fd = tol;
+    const [ax, ay] = xy[a], [bx, by] = xy[b], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1;
+    for (let i = a + 1; i < b; i++) {
+      const t = Math.max(0, Math.min(1, ((xy[i][0] - ax) * dx + (xy[i][1] - ay) * dy) / L2));
+      const d = Math.hypot(xy[i][0] - (ax + t * dx), xy[i][1] - (ay + t * dy));
+      if (d > fd) { fd = d; far = i; }
+    }
+    if (far > 0) { keep[far] = 1; dp(a, far); dp(far, b); }
+  };
+  dp(0, line.length - 1);
+  const out: LatLng[] = [];
+  let lastKept = 0;
+  for (let i = 1; i < line.length; i++) {
+    if (!keep[i]) continue;
+    // long straight: add evenly spaced points along it so the route doesn't take a shortcut elsewhere
+    const seg = lineLength(line.slice(lastKept, i + 1)), extra = Math.floor(seg / maxGap);
+    for (let k = 1; k <= extra; k++) { const p = pointAt(line.slice(lastKept, i + 1), (seg * k) / (extra + 1)); if (p) out.push(p); }
+    out.push(line[i]); lastKept = i;
+  }
+  if (out.length <= max) return out;
+  const step = out.length / max;
+  return Array.from({ length: max }, (_, i) => out[Math.min(out.length - 1, Math.round((i + 1) * step) - 1)]);
+}

@@ -12,7 +12,8 @@ export type DialogState =
   | { kind: 'badges' }
   | { kind: 'levelup'; level: number }
   | { kind: 'plan' }
-  | { kind: 'friend'; id: string };
+  | { kind: 'friend'; id: string }
+  | { kind: 'streak' };
 
 export const dialogs = createStore<{ d: DialogState }>({ d: { kind: null } });
 export const openDialog = (d: DialogState) => dialogs.set({ d });
