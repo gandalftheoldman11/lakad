@@ -103,7 +103,8 @@ export default function PlanMap({ center, start, waypoints = [], route = [], opt
   drawing?: boolean; onStroke?: (pts: LatLng[]) => void; onMovePoint?: (i: number, p: LatLng) => void;
 }) {
   const col = accent();
-  const fitTo = route.length > 1 ? route : options.find(o => o.active)?.coords ?? [];
+  // show your drawn route; with loop suggestions, show all of them so you can compare
+  const fitTo = route.length > 1 ? route : options.flatMap(o => o.coords);
   return (
     <div className={`isolate overflow-hidden rounded-[20px] ${className}`}>
       <MapContainer center={center ?? [12.5, 122]} zoom={center ? 15 : 5} className="h-full w-full" zoomControl={false} attributionControl>
