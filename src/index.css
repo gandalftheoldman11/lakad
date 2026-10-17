@@ -82,9 +82,17 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .lift { background: var(--surface); box-shadow: var(--lift); }
 .hairline-x > * + * { border-left: 1px solid var(--line); }
 
+.field { min-width: 0; }   /* in a two-column row, a field never grows wider than its column */
 .field input, .field select, .field textarea {
   border: 1px solid var(--line); background: var(--surface-2); border-radius: 14px; padding: 13px 14px; width: 100%; color: var(--ink); font-size: 16px;
+  box-sizing: border-box; min-width: 0; max-width: 100%; display: block;
 }
+/* every single-line box the same height, including date, time and dropdowns */
+.field input:not([type=checkbox]):not([type=radio]), .field select { height: 50px; padding-top: 0; padding-bottom: 0; line-height: 48px; }
+/* iPhone draws date and time boxes with its own size and centred text: make them match the others */
+.field input[type=date], .field input[type=time] { -webkit-appearance: none; appearance: none; text-align: left; font-family: inherit; }
+.field input[type=date]::-webkit-date-and-time-value, .field input[type=time]::-webkit-date-and-time-value { text-align: left; margin: 0; min-height: 0; }
+.field input[type=date]::-webkit-datetime-edit, .field input[type=time]::-webkit-datetime-edit { padding: 0; line-height: 48px; }
 .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--cobalt); box-shadow: 0 0 0 3px var(--cobalt-soft); }
 /* Bottom sheet on phones, centered panel on wide screens */
 dialog.sheet {
