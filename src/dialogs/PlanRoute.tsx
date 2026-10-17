@@ -6,9 +6,10 @@ import { closeDialog } from '../lib/dialogs';
 import type { LatLng } from '../lib/routing';
 import { smartRouter, covers, offline, saveAreaAround, AREA_RADIUS } from '../lib/offlineArea';
 import { suggestLoops, pointAt, headingName, lineLength, strokePoints, type LoopOption } from '../lib/planner';
-import { savePlan } from '../lib/plans';
+import { savePlan, plans, loadDraft, saveDraft, clearDraft, type PlanDraft } from '../lib/plans';
 import { fmtDist, unitL, unitM } from '../lib/format';
 import { Button, LinkButton, Segmented, SheetTitle } from '../components/ui';
+import { IconCollapse, IconExpand } from '../components/icons';
 
 const QUICK = { km: [2, 3, 5, 8, 10], mi: [1, 2, 3, 5, 6] };
 
@@ -17,20 +18,31 @@ export function PlanRoute() {
   const [PlanMap, retryMap] = useRetryableLazy(() => import('../components/PlanMap'));
   const { settings, acts } = useStore(data);
   const u = settings.units, M = unitM(u);
-  const [target, setTarget] = useState(u === 'mi' ? 3 : 5);
-  const [custom, setCustom] = useState('');
-  const [mode, setMode] = useState<'loop' | 'draw'>('loop');
-  const [start, setStart] = useState<LatLng | null>(null);
+  // reopen where you left off: an unfinished drawing first, otherwise the plan you chose ("Change")
+  const [init] = useState<PlanDraft | null>(() => loadDraft() ?? plans.get().selected?.draft ?? null);
+  const [target, setTarget] = useState(init?.target ?? (u === 'mi' ? 3 : 5));
+  const [custom, setCustom] = useState(init?.custom ?? '');
+  const [mode, setMode] = useState<'loop' | 'draw'>(init?.mode ?? 'loop');
+  const [start, setStart] = useState<LatLng | null>(init?.start ?? null);
   const [locMsg, setLocMsg] = useState('Finding your location…');
-  const [options, setOptions] = useState<LoopOption[]>([]);
-  const [pick, setPick] = useState(0);
+  const [options, setOptions] = useState<LoopOption[]>(init?.loops ?? []);
+  const [pick, setPick] = useState(init?.pick ?? 0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   // route points, "back to start", and undo history kept together so undo is always exact
   type Shape = { pts: LatLng[]; loop: boolean; back: boolean };
-  const [draw, setDraw] = useState<Shape & { hist: Shape[] }>({ pts: [], loop: false, back: false, hist: [] });
+  const [draw, setDraw] = useState<Shape & { hist: Shape[] }>({ pts: init?.pts ?? [], loop: init?.loop ?? false, back: init?.back ?? false, hist: [] });
   const pts = draw.pts, closeLoop = draw.loop, outBack = draw.back, hist = draw.hist;
   const [pen, setPen] = useState(true);        // Draw on: one finger draws; off: the map moves
+  const [full, setFull] = useState(false);     // full-screen map for comfortable drawing
+  // the phone's back gesture / Escape leaves full screen first, instead of closing the planner
+  useEffect(() => {
+    if (!full) return;
+    // catch it on the way down (capture), before the sheet's own handler closes the planner
+    const back = (e: Event) => { if (e.target instanceof HTMLDialogElement) { e.preventDefault(); e.stopPropagation(); setFull(false); } };
+    document.addEventListener('cancel', back, true);
+    return () => document.removeEventListener('cancel', back, true);
+  }, [full]);
   const setPts = (next: LatLng[] | ((p: LatLng[]) => LatLng[]), loop?: boolean, back?: boolean) =>
     setDraw(d => ({ pts: typeof next === 'function' ? next(d.pts) : next, loop: loop ?? d.loop, back: back ?? d.back, hist: [...d.hist.slice(-30), { pts: d.pts, loop: d.loop, back: d.back }] }));
   const undo = () => setDraw(d => { const last = d.hist[d.hist.length - 1]; return last ? { ...last, hist: d.hist.slice(0, -1) } : d; });
@@ -62,12 +74,18 @@ export function PlanRoute() {
       setLocMsg(last ? 'Couldn’t get your location, so the start is at your last walk. Tap the map to move it.' : 'Couldn’t get your location. Tap the map to set your start.');
     };
     if (!navigator.geolocation) { fallback(); return; }
+    // a reopened route keeps its own start; otherwise start where you are
+    if (init?.start) { setLocMsg(''); return; }
     navigator.geolocation.getCurrentPosition(p => { setStart([p.coords.latitude, p.coords.longitude]); setLocMsg(''); }, fallback, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
     return () => abort.current?.abort();
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // any change to the inputs makes earlier suggestions out of date
-  useEffect(() => { abort.current?.abort(); setOptions([]); setBusy(false); setErr(''); }, [target, start, mode]);
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) { firstRun.current = false; return; }   // keep reopened loop suggestions
+    abort.current?.abort(); setOptions([]); setBusy(false); setErr('');
+  }, [target, start, mode]);
 
   async function findLoops() {
     if (!start) return;
@@ -99,14 +117,45 @@ export function PlanRoute() {
     if (mode === 'draw') { if (!start) setStart(p); else setPts(x => [...x, p]); }
     else setStart(p);
   }
+  // everything needed to reopen this route exactly as it is now
+  const draftNow = (): PlanDraft => ({ target, custom, mode, start, pts, loop: closeLoop, back: outBack, loops: options, pick });
+  // keep an unfinished route if you close the planner or the app
+  useEffect(() => {
+    const t = setTimeout(() => { if (start || pts.length || options.length) saveDraft(draftNow()); }, 400);
+    return () => clearTimeout(t);
+  });
   async function use() {
     if (!active) return;
-    await savePlan({ id: `p${Date.now()}`, target: targetM, coords: active.coords, distance: active.distance, kind: mode === 'loop' ? 'loop' : 'drawn', createdAt: Date.now() });
+    await savePlan({ id: `p${Date.now()}`, target: targetM, coords: active.coords, distance: active.distance, kind: mode === 'loop' ? 'loop' : 'drawn', createdAt: Date.now(), draft: draftNow() });
+    clearDraft();   // the chosen plan now holds it; "Change" reopens it from there
     closeDialog();
   }
 
   const fmt = (m: number) => `${fmtDist(m, u)} ${unitL(u)}`;
+  const mapView = (cls: string) => (
+    <LoadGuard className={cls} onRetry={retryMap}><Suspense fallback={<div className={`${cls} rounded-[20px] bg-cobalt-soft`} />}>
+      <PlanMap className={cls} center={start} start={start} onTap={onTap}
+        waypoints={mode === 'draw' ? pts : []} route={mode === 'draw' ? drawn?.coords ?? [] : []}
+        options={mode === 'loop' ? options.map((o, i) => ({ coords: o.route.coords, active: i === pick, onPick: () => setPick(i) })) : []}
+        goal={goal} goalLabel={`${fmtDist(targetM, u)} ${unitL(u)}`}
+        drawing={mode === 'draw' && pen} onStroke={onStroke} onMovePoint={mode === 'draw' ? onMovePoint : undefined} />
+    </Suspense></LoadGuard>
+  );
+  const modeSwitch = (pos: string) => mode === 'draw' && (
+    <div className={`absolute ${pos} z-[650] flex rounded-full bg-surface p-1 shadow-[var(--lift)]`} role="group" aria-label="Map mode">
+      {([[true, '✏️ Draw'], [false, '✋ Move']] as const).map(([v, l]) => (
+        <button key={String(v)} type="button" data-map-button aria-pressed={pen === v} onClick={() => setPen(v)}
+          className={`hit-y rounded-full px-3 py-1.5 text-[13px] font-bold transition-colors ${pen === v ? 'bg-cobalt text-on-cobalt' : 'text-muted'}`}>{l}</button>
+      ))}
+    </div>
+  );
   const diff = active ? active.distance - targetM : 0;
+  const status = mode === 'draw'
+    ? (!pts.length ? 'Draw along the streets, or tap to add points' : drawn ? `${fmtDist(drawn.distance, u)} of ${fmt(targetM)}` : 'Updating…')
+    : options[pick] ? `Loop ${pick + 1}: ${fmtDist(options[pick].route.distance, u)} of ${fmt(targetM)}` : busy ? 'Finding loops…' : `Find ${fmt(targetM)} loops from here`;
+  const statusSub = mode === 'draw' && drawn && pts.length
+    ? (Math.abs(diff) <= targetM * 0.01 ? 'Right on your goal.' : diff < 0 ? `${fmt(-diff)} to go` : `${fmt(diff)} over · the flag shows your goal`)
+    : '';
   return (
     <>
       <SheetTitle sub="Pick a distance, then let Lakad suggest a loop or draw your own route along real streets and paths.">Plan a route</SheetTitle>
@@ -126,23 +175,14 @@ export function PlanRoute() {
         <Segmented value={mode} onChange={setMode} label="How to plan" options={[['loop', 'Suggest a loop'], ['draw', 'Draw my own']]} />
       </div>
 
-      <div className="relative">
-      <LoadGuard className="mt-3 h-[44dvh] min-h-[260px]" onRetry={retryMap}><Suspense fallback={<div className="mt-3 h-[44dvh] min-h-[260px] rounded-[20px] bg-cobalt-soft" />}>
-        <PlanMap className="mt-3 h-[44dvh] min-h-[260px]" center={start} start={start} onTap={onTap}
-          waypoints={mode === 'draw' ? pts : []} route={mode === 'draw' ? drawn?.coords ?? [] : []}
-          options={mode === 'loop' ? options.map((o, i) => ({ coords: o.route.coords, active: i === pick, onPick: () => setPick(i) })) : []}
-          goal={goal} goalLabel={`${fmtDist(targetM, u)} ${unitL(u)}`}
-          drawing={mode === 'draw' && pen} onStroke={onStroke} onMovePoint={mode === 'draw' ? onMovePoint : undefined} />
-      </Suspense></LoadGuard>
-      {mode === 'draw' && (
-        <div className="absolute top-5 left-2 z-[650] flex rounded-full bg-surface p-1 shadow-[var(--lift)]" role="group" aria-label="Map mode">
-          {([[true, '✏️ Draw'], [false, '✋ Move']] as const).map(([v, l]) => (
-            <button key={String(v)} type="button" data-map-button aria-pressed={pen === v} onClick={() => setPen(v)}
-              className={`hit-y rounded-full px-3 py-1.5 text-[13px] font-bold transition-colors ${pen === v ? 'bg-cobalt text-on-cobalt' : 'text-muted'}`}>{l}</button>
-          ))}
+      {!full && (
+        <div className="relative">
+          {mapView('mt-3 h-[44dvh] min-h-[260px]')}
+          {modeSwitch('top-5 left-2')}
+          <button type="button" data-map-button onClick={() => setFull(true)} aria-label="Full-screen map"
+            className="absolute top-5 right-2 z-[650] grid h-11 w-11 place-items-center rounded-full bg-surface text-ink shadow-[var(--lift)] active:scale-95"><IconExpand size={19} /></button>
         </div>
       )}
-      </div>
       {locMsg && <p className="m-0 mt-1 text-[13px] text-muted">{locMsg}</p>}
       <div className="mt-2 flex items-center justify-between gap-3 text-[13px]">
         <span className={local ? 'font-semibold text-ok' : 'text-muted'}>{local ? '✓ Saved area: works offline' : off.online ? 'Using online routing' : 'Offline, and this area isn’t saved'}</span>
@@ -204,6 +244,48 @@ export function PlanRoute() {
         <Button variant="primary" className="flex-1" disabled={!active} onClick={use}>Walk this route</Button>
         <LinkButton className="px-3 text-[15px]" onClick={closeDialog}>Cancel</LinkButton>
       </div>
+      {full && (
+        <div className="fixed inset-0 z-[1000] flex flex-col bg-bg" role="dialog" aria-modal="true" aria-label="Full-screen planning map">
+          <div className="relative min-h-0 flex-1">
+            {mapView('h-full !rounded-none')}
+            {/* top: live distance and Done */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-[700] px-3" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 10px)' }}>
+              <div className="pointer-events-auto lift flex items-center gap-3 rounded-[20px] bg-surface px-4 py-2.5">
+                <div className="min-w-0 flex-1" aria-live="polite">
+                  <strong className="block truncate text-[16px]">{status}</strong>
+                  {statusSub && <span className="block truncate text-[13px] text-muted">{statusSub}</span>}
+                </div>
+                <button type="button" onClick={() => setFull(false)} className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[14px] font-bold text-ink active:scale-95" aria-label="Done, back to the planner">
+                  <IconCollapse size={17} />Done
+                </button>
+              </div>
+            </div>
+            {modeSwitch('left-3 top-[calc(env(safe-area-inset-top,0px)+86px)]')}
+          </div>
+          {/* bottom: the controls you need while drawing or choosing a loop */}
+          <div className="z-[700] rounded-t-[24px] bg-surface px-3 pt-3 shadow-[0_-10px_30px_-18px_rgba(0,0,0,.35)]" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}>
+            {mode === 'draw' ? (
+              <div className="grid grid-cols-4 gap-2">
+                <Button className="min-h-11 !px-1.5 py-1.5 text-[13px] whitespace-nowrap" disabled={!hist.length} onClick={undo}>Undo</Button>
+                <Button className={`min-h-11 !px-1.5 py-1.5 text-[13px] whitespace-nowrap ${closeLoop ? 'ring-2 ring-[var(--cobalt)]' : ''}`} aria-pressed={closeLoop} disabled={!pts.length} onClick={() => setPts(pts, !closeLoop, false)}>{closeLoop ? 'Loop ✓' : 'To start'}</Button>
+                <Button className={`min-h-11 !px-1.5 py-1.5 text-[13px] whitespace-nowrap ${outBack ? 'ring-2 ring-[var(--cobalt)]' : ''}`} aria-pressed={outBack} disabled={!pts.length} onClick={outAndBack}>{outBack ? 'Back ✓' : 'Out & back'}</Button>
+                <Button className="min-h-11 !px-1.5 py-1.5 text-[13px] whitespace-nowrap" disabled={!pts.length} onClick={() => setPts([], false, false)}>Clear</Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="no-scrollbar edge-fade flex min-w-0 flex-1 gap-2 overflow-x-auto">
+                  {options.map((o, i) => (
+                    <button key={i} type="button" aria-pressed={i === pick} onClick={() => setPick(i)}
+                      className={`min-h-11 shrink-0 rounded-full px-4 text-[14px] font-bold ${i === pick ? 'bg-cobalt text-on-cobalt' : 'bg-surface-2 text-ink'}`}>Loop {i + 1} · {fmtDist(o.route.distance, u)}</button>
+                  ))}
+                </div>
+                <Button variant={options.length ? 'ghost' : 'primary'} className="min-h-11 shrink-0 whitespace-nowrap !px-4 py-1.5 text-[14px]" disabled={!start || busy} onClick={findLoops}>{busy ? 'Finding…' : options.length ? 'New loops' : 'Find loops'}</Button>
+              </div>
+            )}
+            {err && <p role="alert" className="m-0 mt-2 text-[13px] text-danger">{err}</p>}
+          </div>
+        </div>
+      )}
     </>
   );
 }
