@@ -44,6 +44,9 @@ export interface Settings {
   badgeSeen?: number;
   /** metres hidden at the start and end of routes in share images, GPX exports and feed posts (0 = off) */
   privacyTrim: number;
+  /** evening streak reminder (app only) and its time, "HH:MM" */
+  remind?: boolean;
+  remindAt?: string;
   /** finished the first-time setup */
   onboarded: boolean;
   /** step length in metres learned from your GPS walks/runs (0 = estimate from height) */
@@ -56,7 +59,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  goal: 8000, units: 'km', weekGoal: 0, height: 0, weight: 0, autoPause: true, voice: true, lockScreen: true, theme: 'system', accent: 'blue', privacyTrim: 200, onboarded: false, strideWalk: 0, strideRun: 0, strideWalkN: 0, strideRunN: 0, updatedAt: 0
+  goal: 8000, units: 'km', weekGoal: 0, height: 0, weight: 0, autoPause: true, voice: true, lockScreen: true, theme: 'system', accent: 'blue', privacyTrim: 200, remind: true, remindAt: '19:00', onboarded: false, strideWalk: 0, strideRun: 0, strideWalkN: 0, strideRunN: 0, updatedAt: 0
 };
 
 export interface FeedPost {

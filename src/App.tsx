@@ -15,6 +15,7 @@ import { ShareSheet } from './dialogs/ShareSheet';
 import { BadgesSheet, LevelUp } from './dialogs/Badges';
 import { PlanRoute } from './dialogs/PlanRoute';
 import { FriendCard } from './dialogs/FriendCard';
+import { StreakSheet } from './dialogs/StreakSheet';
 import { useBadgeKeeper } from './lib/myBadge';
 import { Onboarding } from './components/Onboarding';
 import { saveSettings } from './lib/data';
@@ -114,6 +115,7 @@ export default function App() {
         {d.kind === 'levelup' && <LevelUp level={d.level} />}
         {d.kind === 'plan' && <PlanRoute />}
         {d.kind === 'friend' && <FriendCard id={d.id} />}
+        {d.kind === 'streak' && <StreakSheet />}
         {d.kind === 'form' && <ActivityForm id={d.id} />}
         {d.kind === 'day' && <DaySteps />}
         {d.kind === 'finish' && <Finish onSaved={() => go('today')} />}

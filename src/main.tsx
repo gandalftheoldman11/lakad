@@ -15,7 +15,7 @@ loadPending();
 if (isNative) void import('./lib/liveStatus').then(m => m.endLive());
 document.addEventListener('visibilitychange', () => persistRecording());
 
-loadData().then(() => { initTheme(); initSync(); void import('./lib/plans').then(m => m.loadPlans()); void import('./lib/offlineArea').then(m => m.loadArea()); void import('./lib/phoneSteps').then(m => m.initPhoneSteps()); });
+loadData().then(() => { initTheme(); initSync(); void import('./lib/plans').then(m => m.loadPlans()); void import('./lib/offlineArea').then(m => m.loadArea()); void import('./lib/reminders').then(m => m.initReminders()); void import('./lib/phoneSteps').then(m => m.initPhoneSteps()); });
 
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
 
