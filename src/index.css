@@ -230,6 +230,10 @@ input[type="checkbox"][role="switch"]:checked::after { transform: translateX(20p
 .lu-glow { animation: lu-glow 1.4s ease-out .4s both; }
 @keyframes lu-glow { 0% { scale: .3; opacity: 0; } 50% { opacity: 1; } 100% { scale: 1; opacity: .8; } }
 
+/* reminder card slides in */
+.card-in { animation: card-in .45s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes card-in { from { opacity: 0; translate: 0 10px; } }
+
 /* friend profile card */
 .fc-float { animation: fc-float 3.4s ease-in-out infinite; }
 @keyframes fc-float { 0%, 100% { translate: 0 0; opacity: .7; } 50% { translate: 0 -7px; opacity: 1; } }
@@ -238,7 +242,7 @@ input[type="checkbox"][role="switch"]:checked::after { transform: translateX(20p
 @keyframes legend-ring { to { --lr: 360deg; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .fc-float, .legend-ring { animation: none !important; }
+  .fc-float, .legend-ring, .card-in { animation: none !important; }
   .bdg-tap, .burst-p, .burst-ring, .lu-flame, .lu-ripple, .lu-strike, .lu-flash, .lu-glow { animation: none !important; }
   .lu-strike, .lu-flash { display: none; }
   .bdg-on .bdg-twinkle, .bdg-on .bdg-sweep, .bdg-on .bdg-glow, .bdg-on .bdg-wings, .bdg-pop, .bdg-rays, .fx-flame, .fx-orbit { animation: none !important; }

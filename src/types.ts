@@ -47,6 +47,8 @@ export interface Settings {
   /** evening streak reminder (app only) and its time, "HH:MM" */
   remind?: boolean;
   remindAt?: string;
+  /** the "turn on reminders?" card was answered (on or Not now) */
+  remindAsked?: boolean;
   /** finished the first-time setup */
   onboarded: boolean;
   /** step length in metres learned from your GPS walks/runs (0 = estimate from height) */
