@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { streakInfo } from '../lib/metrics';
 import { fmtInt, sod } from '../lib/format';
 
 export function Calendar({ map, goal }: { map: Map<number, number>; goal: number }) {
@@ -8,14 +9,16 @@ export function Calendar({ map, goal }: { map: Map<number, number>; goal: number
   const daysIn = new Date(y, mo + 1, 0).getDate(), lead = (first.getDay() + 6) % 7, today = sod(Date.now());
   const isCurrent = y === now.getFullYear() && mo === now.getMonth();
   let met = 0;
+  const frozen = streakInfo(map, goal).frozen;
   const cells = Array.from({ length: daysIn }, (_, i) => {
     const t = new Date(y, mo, i + 1).getTime(), v = map.get(t) || 0;
     if (v >= goal) met++;
     const future = t > today;
-    const cls = future ? 'text-muted !font-normal' : v >= goal ? 'bg-mango text-[#2A1B00] font-bold' : v > 0 ? 'ring-2 ring-inset ring-mango/45' : 'text-muted';
+    const ice = frozen.has(t);
+    const cls = future ? 'text-muted !font-normal' : ice ? 'bg-[#DDF3FF] text-[#1E5A86] font-bold shadow-[inset_0_0_0_2px_#7FC6F2]' : v >= goal ? 'bg-mango text-[#2A1B00] font-bold' : v > 0 ? 'ring-2 ring-inset ring-mango/45' : 'text-muted';
     return (
       <span key={t} title={future ? undefined : `${fmtInt(v)} steps`} className={`mx-auto grid aspect-square w-full max-w-[40px] place-items-center rounded-full text-[13px] font-semibold tabular-nums ${cls} ${t === today ? 'outline-2 outline-offset-2 outline-cobalt' : ''}`}>
-        {i + 1}<span className="sr-only">{future ? ' upcoming' : ` ${fmtInt(v)} steps`}</span>
+        {ice ? <span className="relative">{i + 1}<span className="absolute -top-2.5 -right-2.5 text-[10px]" aria-hidden="true">❄</span></span> : i + 1}<span className="sr-only">{future ? ' upcoming' : ` ${fmtInt(v)} steps${ice ? ', streak freeze used' : ''}`}</span>
       </span>
     );
   });
